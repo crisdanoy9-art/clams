@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
-// Importing all 9 core pages (Login is handled separately)
 import Dashboard from './pages/Dashboard';
 import Laboratories from './pages/Laboratories';
 import Equipment from './pages/Equipment';
@@ -15,12 +14,22 @@ import Login from './pages/Login';
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
-  
-  // Simulation: toggle this to see instructor vs admin views
   const [userRole, setUserRole] = useState<'admin' | 'instructor'>('admin');
 
+  // FIXED: This now accepts the role from the Login component
+  const handleLogin = (role: 'admin' | 'instructor') => {
+    setUserRole(role);
+    setIsLoggedIn(true);
+    setCurrentView('dashboard');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentView('dashboard');
+  };
+
   if (!isLoggedIn) {
-    return <Login onLogin={() => setIsLoggedIn(true)} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   const renderView = () => {
@@ -34,7 +43,7 @@ const App: React.FC = () => {
       case 'users': return userRole === 'admin' ? <Users /> : <Dashboard />;
       case 'logs': return userRole === 'admin' ? <ActivityLogs /> : <Dashboard />;
       case 'reports': return <Reports role={userRole} />;
-      case 'logout': setIsLoggedIn(false); return null;
+      case 'logout': handleLogout(); return null;
       default: return <Dashboard />;
     }
   };
@@ -61,13 +70,15 @@ const App: React.FC = () => {
           
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold text-slate-900">Raylle Admin</p>
+              <p className="text-xs font-bold text-slate-900">
+                {userRole === 'admin' ? 'Raylle Admin' : 'Staff Instructor'}
+              </p>
               <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-tighter">
                 {userRole === 'admin' ? 'System Administrator' : 'Laboratory Instructor'}
               </p>
             </div>
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center text-white font-black">
-              R
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-100 flex items-center justify-center text-white font-black text-xl">
+              {userRole === 'admin' ? 'R' : 'I'}
             </div>
           </div>
         </header>

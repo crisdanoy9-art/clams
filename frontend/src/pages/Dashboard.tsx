@@ -33,13 +33,8 @@ const DashboardContent: React.FC = () => {
             <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
             <p className="text-xs text-slate-500 mt-1">CLAMS / Admin / Dashboard</p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-slate-600">April 26, 2024</span>
-            <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold shadow-sm">
-              <Plus size={18} />
-              Add Equipment
-            </button>
-          </div>
+          
+   
         </header>
 
         {/* Stats Grid */}
