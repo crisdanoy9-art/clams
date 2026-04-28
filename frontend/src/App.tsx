@@ -15,8 +15,8 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
   const [userRole, setUserRole] = useState<'admin' | 'instructor'>('admin');
+  const [sidebarExpanded, setSidebarExpanded] = useState(false); // NEW: control sidebar expansion
 
-  // FIXED: This now accepts the role from the Login component
   const handleLogin = (role: 'admin' | 'instructor') => {
     setUserRole(role);
     setIsLoggedIn(true);
@@ -53,11 +53,14 @@ const App: React.FC = () => {
       <Sidebar 
         onSelect={setCurrentView} 
         activeView={currentView} 
-        userRole={userRole} 
+        userRole={userRole}
+        expanded={sidebarExpanded}
+        onExpandChange={setSidebarExpanded}
       />
 
-      <main className="flex-1 ml-20 transition-all duration-500 ease-in-out min-h-screen flex flex-col">
-        {/* Universal Header */}
+      {/* Main content shifts with sidebar – uses standard flex, no static margin */}
+      <main className="flex-1 min-h-screen flex flex-col transition-all duration-700 ease-[cubic-bezier(0.05,0.7,0.1,1)]">
+        {/* Header – moves with the main container */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
           <div>
             <h2 className="font-black text-slate-800 uppercase tracking-tight text-lg">
@@ -67,7 +70,6 @@ const App: React.FC = () => {
               CCS Laboratory Asset Management System
             </p>
           </div>
-          
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-xs font-bold text-slate-900">
@@ -83,14 +85,12 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Dynamic Content Area */}
         <div className="p-8 flex-1">
           <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
             {renderView()}
           </div>
         </div>
 
-        {/* Branding Footer */}
         <footer className="p-6 text-center text-[9px] font-bold text-slate-300 uppercase tracking-[0.4em]">
           JRMSU - Main Campus | College of Computing Studies © 2026
         </footer>

@@ -123,7 +123,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </form>
 
         <div className="mt-12 text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">
-            System Managed by <span className="text-indigo-400 font-black">Raylle Admin</span>
+            System Managed by <span className="text-indigo-400 font-black"> BSIS-2 </span>
         </div>
       </div>
     </div>

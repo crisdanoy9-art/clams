@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Post } from '../controller/logic'; // Import your logic here
+import { Post } from '../controller/logic'; // Ensure this path is correct
 
 const router = Router();
 

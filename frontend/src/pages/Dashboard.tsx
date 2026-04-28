@@ -31,7 +31,6 @@ const DashboardContent: React.FC = () => {
         <header className="flex justify-between items-start mb-8">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-            <p className="text-xs text-slate-500 mt-1">CLAMS / Admin / Dashboard</p>
           </div>
           
    
@@ -126,7 +125,7 @@ const DashboardContent: React.FC = () => {
 
         {/* Footer */}
         <footer className="border-t border-slate-200 pt-6 mt-4 text-center text-xs text-slate-400">
-          <p>© 2024 CLAMS - Computer Laboratory Asset Management System. All rights reserved.</p>
+          <p>© 2026 CLAMS - Computer Laboratory Asset Management System. All rights reserved.</p>
         </footer>
       </main>
     </div>

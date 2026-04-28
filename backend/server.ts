@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import api from './routes/api'; // Ensure this path is correct
+import api from './routes/api';
 
 const app = express();
 const PORT = 3001;
