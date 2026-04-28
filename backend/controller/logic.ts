@@ -1,35 +1,15 @@
-import { Router, Request, Response } from 'express';
+export const Get = (req: any, res: any) => { }
 
-const router = Router();
-
-// GET all items
-router.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Get all items' });
-});
-
-// GET single item
-router.get('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  res.json({ message: `Get item ${id}` });
-});
-
-// POST create item
-router.post('/', (req: Request, res: Response) => {
+export const Post = (req: any, res: any) => {
+  try{
   const data = req.body;
   res.status(201).json({ message: 'Item created', data });
-});
+  }
+  catch(error: any) {
+    res.status(500).json({ message: 'Error creating item', error });
+  }
+}
 
-// PUT update item
-router.put('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const data = req.body;
-  res.json({ message: `Item ${id} updated`, data });
-});
+export const Update = (req: any, res: any) => {}
 
-// DELETE item
-router.delete('/:id', (req: Request, res: Response) => {
-  const { id } = req.params;
-  res.json({ message: `Item ${id} deleted` });
-});
-
-export default router;
+export const Delete = (req: any, res: any) => {}

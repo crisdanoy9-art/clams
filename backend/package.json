@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "type": "commonjs",
-  "main": "src/app.ts",
+  "main": "server.ts",
   "scripts": {
-    "dev": "tsx watch src/app.ts"
+    "dev": "tsx watch server.ts"
   },
   "keywords": [],
   "author": "",

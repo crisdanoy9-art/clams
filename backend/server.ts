@@ -1,14 +1,18 @@
-import express, { Application } from 'express';
-import itemRoutes from './controller/logic';
+import express, { Request, Response } from 'express';
+import api from './routes/api'; // Ensure this path is correct
 
-const app: Application = express();
+const app = express();
+const PORT = 3001;
 
 app.use(express.json());
 
-// Routes
-app.use('/api/items', itemRoutes);
+// Mount the router
+app.use(api); 
 
-const PORT = process.env.PORT || 3000;
+app.get('/', (req: Request, res: Response) => {
+  res.send('Backend is running!');
+});
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is listening on http://localhost:${PORT}`);
 });
