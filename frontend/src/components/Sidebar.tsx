@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
 import {
-  LayoutDashboard,
-  FlaskConical,
-  Monitor,
-  Wrench,
-  Users,
-  BarChart3,
-  LogOut,
-  ChevronRight
+  LayoutDashboard, FlaskConical, Monitor, MousePointer2,
+  ClipboardList, Wrench, Users, History, BarChart3, LogOut,
+  Package
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -19,131 +14,135 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onSelect, activeView, userRole }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'laboratories', label: 'Laboratories', icon: <FlaskConical size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'equipment', label: 'Equipment', icon: <Monitor size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'peripherals', label: 'Peripherals', icon: <MousePointer2 size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'borrow', label: 'Borrow & Return', icon: <ClipboardList size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'maintenance', label: 'Maintenance', icon: <Wrench size={22} />, roles: ['admin', 'instructor'] },
+    { id: 'users', label: 'User Management', icon: <Users size={22} />, roles: ['admin'] },
+    { id: 'logs', label: 'Activity Logs', icon: <History size={22} />, roles: ['admin'] },
+  ];
+
   return (
     <aside 
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
-      className={`fixed top-0 left-0 h-screen bg-white shadow-2xl flex flex-col border-r border-slate-200 z-50 transition-all duration-500 ease-in-out overflow-hidden ${
-        isExpanded ? 'w-64' : 'w-20'
+      className={`fixed top-0 left-0 h-screen bg-white shadow-[40px_0_100px_-20px_rgba(79,70,229,0.12)] flex flex-col border-r border-slate-100 z-50 transition-all duration-700 ease-[cubic-bezier(0.05,0.7,0.1,1)] overflow-hidden ${
+        isExpanded ? 'w-80' : 'w-24'
       }`}
     >
-      {/* Brand Header */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200">
-            <span className="text-white font-black text-sm">C</span>
+      {/* THE 3D FLIPPING "C" CORE */}
+      <div className="h-44 flex items-center px-6 shrink-0 relative perspective-1000 bg-gradient-to-b from-indigo-50/50 to-transparent">
+        <div className="flex items-center gap-6 group cursor-pointer">
+          
+          <div className="relative w-16 h-16 preserve-3d">
+            {/* VIOLET BLOOM AURA */}
+            <div className="absolute inset-0 bg-indigo-600/25 rounded-full blur-[30px] animate-pulse"></div>
+
+            {/* THE FLIPPING COIN */}
+            <div className="w-full h-full relative animate-[flip_8s_linear_infinite] preserve-3d group-hover:animate-[flip_3s_linear_infinite]">
+              
+              {/* FRONT: VIOLET BORDERED "C" */}
+              <div className="absolute inset-0 w-full h-full bg-slate-900 rounded-2xl flex items-center justify-center border-2 border-indigo-500 shadow-[0_0_20px_rgba(79,70,229,0.5)] backface-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/30 via-transparent to-white/10"></div>
+                <span className="text-white font-black text-4xl italic tracking-tighter drop-shadow-[0_0_10px_#4f46e5]">
+                  C
+                </span>
+              </div>
+
+              {/* BACK: INVENTORY SYMBOL */}
+              <div className="absolute inset-0 w-full h-full bg-indigo-600 rounded-2xl flex items-center justify-center border-2 border-white/30 rotate-y-180 backface-hidden shadow-inner">
+                <Package className="text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.8)]" size={34} />
+              </div>
+            </div>
+
+            {/* EXTERNAL DECORATIVE RING */}
+            <div className="absolute -inset-3 border-2 border-indigo-500/10 rounded-full animate-[spin_12s_linear_infinite]"></div>
           </div>
-          <div className={`flex flex-col transition-all duration-500 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}>
-            <h1 className="text-lg font-black text-slate-800 leading-none tracking-tighter">CLAMS</h1>
-            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">Inventory</span>
+
+          {/* BRAND TITLE WITH VIOLET "C" EMPHASIS */}
+          <div className={`flex flex-col transition-all duration-1000 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20 pointer-events-none'}`}>
+            <h1 className="flex items-baseline font-black text-slate-800 tracking-tighter">
+              {/* The Emphasized Violet C */}
+              <span className="text-5xl text-indigo-600 mr-0.5 drop-shadow-[0_0_10px_rgba(79,70,229,0.4)] animate-pulse">
+                C
+              </span>
+              <span className="text-3xl">LAMS</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] italic">LAPSNADAS</span>
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 py-8 space-y-1 px-3">
-        <NavItem 
-          icon={<LayoutDashboard size={22} />} 
-          label="Dashboard" 
-          isActive={activeView === 'dashboard'}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('dashboard')} 
-        />
-        <NavItem 
-          icon={<FlaskConical size={22} />} 
-          label="Laboratories" 
-          isActive={activeView === 'laboratories'}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('laboratories')} 
-        />
-        <NavItem 
-          icon={<Monitor size={22} />} 
-          label="Equipment" 
-          isActive={activeView === 'equipment'}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('equipment')} 
-        />
-        <NavItem 
-          icon={<Wrench size={22} />} 
-          label="Maintenance" 
-          isActive={activeView === 'maintenance'}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('maintenance')} 
-        />
-
-        {/* ROLE-BASED: Only Admin can see User Management */}
-        {userRole === 'admin' && (
+      {/* NAVIGATION SECTION */}
+      <nav className="flex-1 py-6 space-y-3 px-5 overflow-y-auto no-scrollbar">
+        {navItems.filter(item => item.roles.includes(userRole)).map((item) => (
           <NavItem 
-            icon={<Users size={22} />} 
-            label="User Management" 
-            isActive={activeView === 'users'}
+            key={item.id}
+            icon={item.icon} 
+            label={item.label} 
+            isActive={activeView === item.id}
             isExpanded={isExpanded} 
-            onClick={() => onSelect('users')} 
+            onClick={() => onSelect(item.id)} 
           />
-        )}
-        
-        {/* ROLE-BASED: Reports Label changes based on role */}
-        <NavItem 
-          icon={<BarChart3 size={22} />} 
-          label={userRole === 'admin' ? "View Reports" : "File a Report"} 
-          isActive={activeView === 'reports'}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('reports')} 
-        />
+        ))}
       </nav>
 
-      {/* Footer / Role Identity */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className={`mb-4 flex items-center gap-3 px-2 transition-all duration-500 ${isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-[10px]">R</div>
-          <div className="overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-800 truncate">Raylle</p>
-            <p className="text-[9px] text-slate-400 font-bold uppercase truncate">{userRole} View</p>
+      {/* FOOTER: THE "ROOT" CONTROLLER (RAYLLE) */}
+      <div className="p-6 mt-auto bg-slate-50/50 border-t border-slate-100">
+        <div className={`mb-6 flex items-center gap-4 transition-all duration-700 ${isExpanded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+          <div className="relative group">
+             <div className="w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white font-black text-xl shadow-xl transition-all group-hover:bg-indigo-600 group-hover:rotate-12">
+                R
+             </div>
+             <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-white rounded-full"></div>
+          </div>
+          <div>
+            <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">Raylle Admin</p>
+            <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5 italic">Access Level: 1</p>
           </div>
         </div>
         
-        <NavItem 
-          icon={<LogOut size={22} className="text-rose-500" />} 
-          label="Logout" 
-          isActive={false}
-          isExpanded={isExpanded} 
-          onClick={() => onSelect('logout')} 
-        />
-      </div>
-
-      {/* Edge Indicator */}
-      <div className={`absolute top-1/2 -right-0 transition-all duration-500 ${isExpanded ? 'rotate-180 opacity-0' : 'rotate-0 opacity-100'}`}>
-        <div className="bg-white border-y border-l border-slate-200 rounded-l-md p-1 shadow-sm text-slate-300">
-           <ChevronRight size={10} />
-        </div>
+        <button
+          onClick={() => onSelect('logout')}
+          className="w-full flex items-center gap-5 px-5 py-5 rounded-2xl text-slate-400 hover:bg-rose-500 hover:text-white transition-all duration-500 group relative overflow-hidden"
+        >
+          <LogOut size={22} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+          <span className={`text-[11px] font-black uppercase tracking-widest relative z-10 transition-all duration-700 ${isExpanded ? 'opacity-100' : 'opacity-0'}`}>
+            End Session
+          </span>
+        </button>
       </div>
     </aside>
   );
 };
 
-const NavItem: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  isActive: boolean;
-  isExpanded: boolean; 
-  onClick: () => void 
-}> = ({ icon, label, isActive, isExpanded, onClick }) => (
+const NavItem: React.FC<{ icon: React.ReactNode; label: string; isActive: boolean; isExpanded: boolean; onClick: () => void }> = ({ icon, label, isActive, isExpanded, onClick }) => (
   <button
     onClick={(e) => { e.preventDefault(); onClick(); }}
-    className={`w-full flex items-center gap-4 px-3 py-3 rounded-xl transition-all duration-300 group relative ${
+    className={`w-full flex items-center gap-6 px-5 py-5 rounded-2xl transition-all duration-500 group relative ${
       isActive 
-      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-      : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'
+      ? 'bg-slate-900 text-white shadow-[0_20px_40px_-10px_rgba(79,70,229,0.3)] translate-x-3' 
+      : 'text-slate-400 hover:bg-indigo-50 hover:text-indigo-600'
     }`}
   >
-    <div className={`shrink-0 transition-transform duration-300 ${!isActive && 'group-hover:scale-110'}`}>
+    <div className={`shrink-0 transition-all duration-500 ${isActive ? 'scale-125 text-indigo-400' : 'group-hover:scale-115'}`}>
       {icon}
     </div>
-    <span className={`text-sm font-bold whitespace-nowrap transition-all duration-500 ${
-      isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8 pointer-events-none'
+    <span className={`text-[12px] font-black uppercase tracking-[0.15em] whitespace-nowrap transition-all duration-700 ${
+      isExpanded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12 pointer-events-none'
     }`}>
       {label}
     </span>
+    
+    {isActive && (
+      <div className="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-full shadow-[0_0_15px_#4f46e5]"></div>
+    )}
   </button>
 );
 
