@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { Post } from '../controller/logic'; // Ensure this path is correct
+import {GetData} from '../controller/logic';
 
 const router = Router();
 
 // This makes the endpoint: POST http://localhost:3001/test/api
-router.post('/test/api', Post); 
+router.get('/test/api', GetData); 
 
 export default router; // IMPORTANT: You must export default
