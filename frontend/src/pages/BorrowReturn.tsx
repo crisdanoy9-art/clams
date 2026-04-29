@@ -29,7 +29,10 @@ interface BorrowReturnProps {
   role: 'admin' | 'instructor';
 }
 
-const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
+interface BorrowReturnProps {
+  userRole: 'admin' | 'instructor';
+}
+const BorrowReturn: React.FC<BorrowReturnProps> = ({ userRole }) => {
   // ---------- STATE ----------
   const [items, setItems] = useState<Item[]>([
     { id: 1, name: 'Logitech Headset', total: 8, available: 5, category: 'Audio', model: 'H390', laboratory: 'Laboratory 1' },
@@ -95,7 +98,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
 
   // Open return modal
   const openReturnModal = (transactionId: number) => {
-    if (role !== 'instructor') return;
+    if (userRole !== 'instructor') return;
     const transaction = transactions.find(t => t.id === transactionId);
     if (!transaction || transaction.status === 'Returned') return;
     setSelectedTransactionId(transactionId);
@@ -131,7 +134,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
   };
 
   const handleNewBorrow = () => {
-    if (role !== 'instructor') return;
+    if (userRole !== 'instructor') return;
     setBorrowForm({ itemId: '', borrowerName: '', dueDate: '' });
     setFormError('');
     setShowBorrowModal(true);
@@ -263,7 +266,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
           >
             <Plus size={18} /> Add New Asset
           </button>
-          {role === 'instructor' && (
+          {userRole === 'instructor' && (
             <button
               onClick={handleNewBorrow}
               className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
@@ -381,7 +384,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
                 <th className="px-8 py-5">Borrow Date</th>
                 {viewMode === 'returning' && <th className="px-8 py-5">Actual Return Date</th>}
                 <th className="px-8 py-5">Status</th>
-                {role === 'instructor' && viewMode === 'borrowing' && <th className="px-8 py-5 text-right">Action</th>}
+                {userRole === 'instructor' && viewMode === 'borrowing' && <th className="px-8 py-5 text-right">Action</th>}
               </tr>
             </thead>
             <tbody className="text-xs font-bold text-slate-600 divide-y divide-slate-50">
@@ -390,7 +393,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
                   <td colSpan={(() => {
                     let cols = 4;
                     if (viewMode === 'returning') cols++;
-                    if (role === 'instructor' && viewMode === 'borrowing') cols++;
+                    if (userRole === 'instructor' && viewMode === 'borrowing') cols++;
                     return cols;
                   })()} className="px-8 py-16 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
@@ -398,7 +401,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
                       <p className="text-xs font-bold">
                         {viewMode === 'borrowing' ? 'No active borrow records' : 'No return records yet'}
                       </p>
-                      {role === 'instructor' && viewMode === 'borrowing' && (
+                      {userRole === 'instructor' && viewMode === 'borrowing' && (
                         <button onClick={handleNewBorrow} className="mt-2 text-indigo-600 text-[10px] font-black uppercase tracking-wider hover:underline">
                           + Create new borrow entry
                         </button>
@@ -448,7 +451,7 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ role }) => {
                         </span>
                       )}
                     </td>
-                    {role === 'instructor' && viewMode === 'borrowing' && (
+                    {userRole === 'instructor' && viewMode === 'borrowing' && (
                       <td className="px-8 py-5 text-right">
                         <button
                           onClick={() => openReturnModal(t.id)}

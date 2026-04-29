@@ -13,9 +13,13 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-const DashboardContent: React.FC = () => {
+interface DashboardProps {
+  userRole: 'admin' | 'instructor';
+}
+
+const  DashboardProp: React.FC<DashboardProps> = ({ }) => {
   // Calculate realistic progress percentages
-  const totalPcs = 86;
+  const totalPcs = 86;  
   const availableUnits = 74;
   const borrowedItems = 8;
   const damageReports = 4;
@@ -207,4 +211,4 @@ const ActivityItem: React.FC<{ icon: React.ReactNode, text: string, time: string
   </div>
 );
 
-export default DashboardContent;
+export default  DashboardProp;

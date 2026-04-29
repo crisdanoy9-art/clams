@@ -29,7 +29,7 @@ const Peripherals: React.FC = () => {
           onClick={() => setIsModalOpen(true)}
           className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
         >
-          <Plus size={18} /> Add New Item Type
+          <Plus size={18} /> Add New Item 
         </button>
       </div>
 

@@ -1,8 +1,8 @@
 import React from 'react';
-import {
-  LayoutDashboard, FlaskConical, Monitor, MousePointer2,
-  ClipboardList, Wrench, Users, History, LogOut,
-  Package
+import { 
+  LayoutDashboard, FlaskConical, Monitor, MousePointer2, 
+  ClipboardList, AlertTriangle, Users, History, LogOut, 
+  Package, FileBarChart 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -17,14 +17,21 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelect, activeView, userRole, 
   expanded, onExpandChange 
 }) => {
+  
+  // Finalized Navigation mapping based on role requirements
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={22} />, roles: ['admin', 'instructor'] },
     { id: 'laboratories', label: 'Laboratories', icon: <FlaskConical size={22} />, roles: ['admin', 'instructor'] },
     { id: 'equipment', label: 'Equipment', icon: <Monitor size={22} />, roles: ['admin', 'instructor'] },
     { id: 'peripherals', label: 'Peripherals', icon: <MousePointer2 size={22} />, roles: ['admin', 'instructor'] },
-    { id: 'borrow', label: 'Borrow & Return', icon: <ClipboardList size={22} />, roles: ['admin', 'instructor'] },
-    { id: 'maintenance', label: 'Maintenance', icon: <Wrench size={22} />, roles: ['admin', 'instructor'] },
+    
+    // Instructor Focused
+    { id: 'borrow', label: 'Borrow & Return', icon: <ClipboardList size={22} />, roles: ['instructor'] },
+    { id: 'damage', label: 'Damage Reports', icon: <AlertTriangle size={22} />, roles: ['instructor'] },
+    
+    // Admin Exclusive (Replaced Maintenance with Reports)
     { id: 'users', label: 'User Management', icon: <Users size={22} />, roles: ['admin'] },
+    { id: 'reports', label: 'Reports', icon: <FileBarChart size={22} />, roles: ['admin'] },
     { id: 'logs', label: 'Activity Logs', icon: <History size={22} />, roles: ['admin'] },
   ];
 
@@ -79,7 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </nav>
 
-      {/* Footer: Logout above LAPSNADAS ADMIN */}
+      {/* Footer: Logout */}
       <div className="p-6 mt-auto bg-slate-50/50 border-t border-slate-100">
         <button
           onClick={() => onSelect('logout')}
@@ -91,15 +98,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
 
-        <div className={`mb-6 flex items-center gap-4 transition-all duration-700 ${expanded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
-          <div className="relative group">
-             <div className="w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white font-black text-xl shadow-xl transition-all group-hover:bg-indigo-600 group-hover:rotate-12">R</div>
-             <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-4 border-white rounded-full"></div>
-          </div>
-          <div>
-            <p className="text-xs font-black text-slate-800 uppercase tracking-tighter">LAPSNADAS ADMIN</p>
-            <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5 italic">version 1.0</p>
-          </div>
+        <div className={`mt-4 flex flex-col transition-all duration-700 ${expanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest px-5">
+             System v1.0
+           </span>
         </div>
       </div>
     </aside>

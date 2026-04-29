@@ -1,85 +1,164 @@
 import React, { useState } from 'react';
-import { UserPlus, Shield, User, X, Mail, Key } from 'lucide-react';
+import { UserPlus, Shield, Mail, CreditCard, User, Lock, X, CheckCircle } from 'lucide-react';
+
+interface UserForm {
+  id_number: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: 'admin' | 'instructor';
+  password_hash: string; // Plain text here, hash on the backend
+}
 
 const Users: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [users, setUsers] = useState([
-    { id: 1, name: 'Raylle', role: 'Admin', email: 'admin@jrmsu.edu.ph', idNum: 'CCS-001' },
-    { id: 2, name: 'Danoy', role: 'Instructor', email: 'danoy@jrmsu.edu.ph', idNum: 'CCS-042' },
-  ]);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState<UserForm>({
+    id_number: '',
+    username: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    role: 'instructor',
+    password_hash: ''
+  });
 
-  const [newUser, setNewUser] = useState({ name: '', email: '', idNum: '', role: 'Instructor' });
+  // Validation Logic based on your specific requirements
+  const idRegex = /^(24|25)-A-\d{5}$/;
 
-  const handleRegister = () => {
-    if (newUser.name && newUser.idNum) {
-      setUsers([...users, { ...newUser, id: Date.now() }]);
-      setIsModalOpen(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 1. Validation Check
+    if (!idRegex.test(formData.id_number)) {
+      alert("Invalid ID Format. Please use the JRMSU standard (e.g., 24-A-12345).");
+      return;
+    }
+
+    try {
+      // 2. Database Connection (POST to your API)
+      const response = await fetch('/api/users/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        alert("User added successfully to CLAMS database!");
+        setShowModal(false);
+        // Reset form
+        setFormData({ id_number: '', username: '', first_name: '', last_name: '', email: '', role: 'instructor', password_hash: '' });
+      }
+    } catch (error) {
+      console.error("Database connection failed:", error);
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
-      <div className="flex justify-between items-end">
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">User Management</h2>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Authorized CCS Staff Only</p>
+          <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">User Management</h2>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Manage System Access & Permissions</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200"
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
         >
-          <UserPlus size={18} /> Register New User
+          <UserPlus size={16} /> Add New Faculty
         </button>
       </div>
 
-      {/* Register User Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden scale-100 animate-in zoom-in-95">
-            <div className="bg-slate-900 p-8 text-white flex justify-between items-center">
-              <h3 className="font-black uppercase tracking-tighter text-xl">New System User</h3>
-              <button onClick={() => setIsModalOpen(false)}><X size={24}/></button>
+      {/* --- ADD USER MODAL --- */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setShowModal(false)}></div>
+          <form onSubmit={handleSubmit} className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-10 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Registration Form</h3>
+              <button type="button" onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-all"><X size={20}/></button>
             </div>
-            <div className="p-8 space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Full Name</label>
-                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-indigo-600 transition-all" onChange={(e) => setNewUser({...newUser, name: e.target.value})} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">ID Number</label>
-                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-indigo-600 transition-all" onChange={(e) => setNewUser({...newUser, idNum: e.target.value})} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Role Assignment</label>
-                <select className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-indigo-600 transition-all" onChange={(e) => setNewUser({...newUser, role: e.target.value})}>
-                  <option>Instructor</option><option>Admin</option>
-                </select>
-              </div>
-              <button onClick={handleRegister} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-sm mt-4 hover:bg-indigo-700 transition-all">Create Account</button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* User Cards */}
-      <div className="grid gap-4">
-        {users.map((u) => (
-          <div key={u.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center justify-between hover:border-indigo-200 transition-all">
-            <div className="flex items-center gap-6">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${u.role === 'Admin' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>
-                {u.role === 'Admin' ? <Shield size={24} /> : <User size={24} />}
+            <div className="p-10 grid grid-cols-2 gap-6">
+              {/* ID Number Input */}
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">ID Number (JRMSU Format)</label>
+                <div className="relative">
+                  <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input 
+                    required
+                    placeholder="24-A-12345"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    value={formData.id_number}
+                    onChange={(e) => setFormData({...formData, id_number: e.target.value})}
+                  />
+                </div>
               </div>
-              <div>
-                <h3 className="font-black text-slate-800 text-lg leading-tight">{u.name}</h3>
-                <div className="flex items-center gap-4 mt-1">
-                  <span className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter flex items-center gap-1"><Key size={10}/>{u.idNum}</span>
-                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Mail size={10}/>{u.email}</span>
+
+              {/* Username Input */}
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Login Username</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input 
+                    required
+                    placeholder="raylle_admin"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              {/* Names */}
+              <input required placeholder="First Name" className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.first_name} onChange={(e) => setFormData({...formData, first_name: e.target.value})} />
+              <input required placeholder="Last Name" className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} />
+
+              {/* Role Selection */}
+              <div className="col-span-2 space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Account Permission</label>
+                <div className="flex gap-4">
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, role: 'instructor'})}
+                    className={`flex-1 p-4 rounded-2xl border-2 flex items-center justify-center gap-3 transition-all ${formData.role === 'instructor' ? 'bg-indigo-50 border-indigo-500 text-indigo-600' : 'border-slate-100 text-slate-400'}`}
+                  >
+                    <User size={18}/> <span className="font-black text-[10px] uppercase">Instructor</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setFormData({...formData, role: 'admin'})}
+                    className={`flex-1 p-4 rounded-2xl border-2 flex items-center justify-center gap-3 transition-all ${formData.role === 'admin' ? 'bg-rose-50 border-rose-500 text-rose-600' : 'border-slate-100 text-slate-400'}`}
+                  >
+                    <Shield size={18}/> <span className="font-black text-[10px] uppercase">ADMIN</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="col-span-2 space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Temporary Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input 
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    value={formData.password_hash}
+                    onChange={(e) => setFormData({...formData, password_hash: e.target.value})}
+                  />
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+
+            <div className="p-10 bg-slate-50/50 border-t border-slate-50 flex gap-4">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-white border border-slate-200 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all">Cancel</button>
+              <button type="submit" className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all">Finalize & Store</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

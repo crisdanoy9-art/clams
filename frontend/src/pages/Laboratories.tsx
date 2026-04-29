@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { CircleDot, X, Monitor, Info, Edit3, Save, AlertCircle, CheckCircle, FileText, Sidebar, Plus, Trash2 } from 'lucide-react';
+import { 
+  CircleDot, X, Monitor, Info, Edit3, Save, AlertCircle, 
+  CheckCircle, FileText, Sidebar, Plus, Trash2, Power, Trash
+} from 'lucide-react';
 
-// Define types
+interface LaboratoriesProps {
+  userRole: 'admin' | 'instructor';
+  onNavigateToLogs: () => void;
+}
+
 type PCStatus = 'available' | 'unavailable';
 
 interface PC {
@@ -20,35 +27,7 @@ interface Lab {
   pcsData: PC[];
 }
 
-// Initial PC data generator
-const generateInitialPCs = (totalCount: number, initialIssues: number): PC[] => {
-  return Array.from({ length: totalCount }, (_, i) => {
-    const isUnavailable = i < initialIssues;
-    return {
-      id: i + 1,
-      status: isUnavailable ? 'unavailable' : 'available',
-      referenceNote: isUnavailable ? 'Hardware malfunction' : undefined,
-    };
-  });
-};
-
-// Initial labs data
-const initialLabs: Lab[] = [
-  { 
-    id: 1, name: 'Lab 1', room: 'Room 101', pcs: 30, avail: 28, issues: 2, 
-    pcsData: generateInitialPCs(30, 2) 
-  },
-  { 
-    id: 2, name: 'Lab 2', room: 'Room 102', pcs: 28, avail: 24, issues: 4, 
-    pcsData: generateInitialPCs(28, 4) 
-  },
-  { 
-    id: 3, name: 'Lab 3', room: 'Room 103', pcs: 20, avail: 15, issues: 5, 
-    pcsData: generateInitialPCs(20, 5) 
-  },
-];
-
-const Laboratories: React.FC = () => {
+const Laboratories: React.FC<LaboratoriesProps> = ({ userRole, onNavigateToLogs }) => {
   const [labsData, setLabsData] = useState<Lab[]>(initialLabs);
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -56,7 +35,8 @@ const Laboratories: React.FC = () => {
   const [selectedPCId, setSelectedPCId] = useState<number | null>(null);
   const [editingPCs, setEditingPCs] = useState<PC[]>([]);
 
-  // Load editing PCs when modal opens or selected lab changes
+  const isAdmin = userRole === 'admin';
+
   useEffect(() => {
     if (selectedLab) {
       setEditingPCs(JSON.parse(JSON.stringify(selectedLab.pcsData)));
@@ -66,392 +46,190 @@ const Laboratories: React.FC = () => {
     }
   }, [selectedLab]);
 
-  // Update lab statistics based on editingPCs
-  const updateStatistics = (pcsData: PC[]) => {
-    const available = pcsData.filter(pc => pc.status === 'available').length;
-    const issues = pcsData.filter(pc => pc.status === 'unavailable').length;
-    return { available, issues, total: pcsData.length };
-  };
-
-  // Handle PC status change
-  const handleStatusChange = (pcId: number, newStatus: PCStatus, referenceNote?: string) => {
+  const handleStatusChange = (pcId: number, newStatus: PCStatus) => {
     setEditingPCs(prev => prev.map(pc => 
-      pc.id === pcId 
-        ? { 
-            ...pc, 
-            status: newStatus,
-            referenceNote: newStatus === 'unavailable' ? (referenceNote || pc.referenceNote || 'No reason provided') : undefined
-          }
-        : pc
+      pc.id === pcId ? { ...pc, status: newStatus } : pc
     ));
   };
 
-  // Handle reference note change
-  const handleReferenceChange = (pcId: number, note: string) => {
-    setEditingPCs(prev => prev.map(pc => 
-      pc.id === pcId && pc.status === 'unavailable'
-        ? { ...pc, referenceNote: note }
-        : pc
-    ));
-  };
-
-  // Add a new PC
-  const handleAddPC = () => {
-    const maxId = editingPCs.length > 0 ? Math.max(...editingPCs.map(pc => pc.id)) : 0;
-    const newId = maxId + 1;
-    const newPC: PC = {
-      id: newId,
-      status: 'available',
-    };
-    setEditingPCs(prev => [...prev, newPC]);
-    // Auto-select the new PC for editing in sidebar
-    setSelectedPCId(newId);
-    setSidebarOpen(true);
-  };
-
-  // Delete a PC
   const handleDeletePC = (pcId: number) => {
-    const pcToDelete = editingPCs.find(pc => pc.id === pcId);
-    if (!pcToDelete) return;
-    
-    const confirmDelete = window.confirm(`Are you sure you want to delete ${getPCName(pcId)}? This action cannot be undone.`);
+    const confirmDelete = window.confirm(`Are you sure you want to delete PC-${pcId.toString().padStart(2, '0')}? This will remove it from the lab inventory.`);
     if (confirmDelete) {
       setEditingPCs(prev => prev.filter(pc => pc.id !== pcId));
-      if (selectedPCId === pcId) {
-        setSelectedPCId(null);
-        if (sidebarOpen) setSidebarOpen(false);
-      }
-    }
-  };
-
-  // Save all changes
-  const handleSaveChanges = () => {
-    if (!selectedLab) return;
-    const { available, issues, total } = updateStatistics(editingPCs);
-    const updatedLab = {
-      ...selectedLab,
-      pcs: total,
-      avail: available,
-      issues: issues,
-      pcsData: editingPCs,
-    };
-    setLabsData(prev => prev.map(lab => lab.id === selectedLab.id ? updatedLab : lab));
-    setSelectedLab(updatedLab);
-    setEditMode(false);
-    setSidebarOpen(false);
-    setSelectedPCId(null);
-  };
-
-  // Cancel editing
-  const handleCancelEdit = () => {
-    if (selectedLab) {
-      setEditingPCs(JSON.parse(JSON.stringify(selectedLab.pcsData)));
-      setEditMode(false);
       setSidebarOpen(false);
       setSelectedPCId(null);
     }
   };
 
-  const selectedPC = selectedPCId ? editingPCs.find(pc => pc.id === selectedPCId) : null;
+  const handleSaveChanges = () => {
+    if (!selectedLab) return;
+    const available = editingPCs.filter(pc => pc.status === 'available').length;
+    const issues = editingPCs.filter(pc => pc.status === 'unavailable').length;
+    
+    const updatedLab = { ...selectedLab, pcs: editingPCs.length, avail: available, issues: issues, pcsData: editingPCs };
+    setLabsData(prev => prev.map(lab => lab.id === selectedLab.id ? updatedLab : lab));
+    setSelectedLab(updatedLab);
+    setEditMode(false);
+    setSidebarOpen(false);
+  };
+
   const getPCName = (id: number) => `PC-${id.toString().padStart(2, '0')}`;
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Laboratories</h2>
-      </div>
+    <div className="p-8 animate-in fade-in duration-500">
+      {/* Header Section */}
+      <header className="mb-10">
+        <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Laboratory Management</h2>
+        <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mt-1 italic">Dapitan Main Campus System</p>
+      </header>
 
       {/* Lab Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {labsData.map((lab) => (
-          <div
-            key={lab.id}
-            onClick={() => setSelectedLab(lab)}
-            className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 cursor-pointer transition-all group"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h4 className="font-bold text-slate-800 text-lg group-hover:text-indigo-600 transition-colors">{lab.name}</h4>
-                <p className="text-xs text-slate-400 mt-0.5">{lab.room}</p>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-                <CircleDot className="text-emerald-500 w-2 h-2 fill-emerald-500" />
-                <span className="text-[10px] font-bold text-emerald-600 uppercase">Online</span>
-              </div>
+          <div key={lab.id} onClick={() => setSelectedLab(lab)} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 cursor-pointer transition-all group">
+             <div className="flex justify-between items-start mb-2">
+              <h4 className="font-black text-slate-800 text-2xl uppercase tracking-tighter">{lab.name}</h4>
+              <div className="bg-emerald-50 text-emerald-500 px-3 py-1 rounded-full border border-emerald-100 text-[9px] font-black uppercase tracking-widest">Active</div>
             </div>
-            
-            <div className="grid grid-cols-3 gap-2 text-center border-t border-slate-100 pt-4">
-              <div>
-                <p className="text-2xl font-bold text-slate-800">{lab.pcs}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">TOTAL</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-emerald-600">{lab.avail}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">READY</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-rose-500">{lab.issues}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ISSUES</p>
-              </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">{lab.room}</p>
+            <div className="flex gap-6 border-t border-slate-50 pt-6">
+              <div><p className="text-xl font-black text-slate-800">{lab.pcs}</p><p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Total</p></div>
+              <div><p className="text-xl font-black text-emerald-500">{lab.avail}</p><p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Ready</p></div>
+              <div><p className="text-xl font-black text-rose-500">{lab.issues}</p><p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Issues</p></div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* --- MODAL SECTION --- */}
+      {/* --- Main Modal --- */}
       {selectedLab && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedLab(null)}></div>
+          
+          <div className="relative bg-white w-full max-w-7xl h-[85vh] rounded-[3.5rem] shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-300">
             
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h3 className="text-xl font-bold text-slate-800">{selectedLab.name} - Unit Status</h3>
-                <p className="text-sm text-slate-500">Inventory breakdown for {selectedLab.room}</p>
+            {/* Main PC View */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="p-10 border-b border-slate-50 flex justify-between items-center bg-slate-50/30">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">{selectedLab.name} Infrastructure</h3>
+                <div className="flex gap-4">
+                  {isAdmin && (
+                    <button 
+                      onClick={() => setEditMode(!editMode)} 
+                      className={`px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${editMode ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+                    >
+                      {editMode ? 'Exit Setup' : 'Manage Units'}
+                    </button>
+                  )}
+                  <button onClick={() => setSelectedLab(null)} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all"><X size={20}/></button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Edit Mode Toggle Button */}
-                {!editMode ? (
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="p-2 hover:bg-slate-200 rounded-full transition-colors text-indigo-600 hover:text-indigo-700"
-                    title="Enable editing"
-                  >
-                    <Edit3 size={20} />
+
+              <div className="flex-1 overflow-y-auto p-12 bg-slate-50/20">
+                <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-8">
+                  {editingPCs.map((pc) => (
+                    <div 
+                      key={pc.id} 
+                      onClick={() => { if(isAdmin) { setSelectedPCId(pc.id); setSidebarOpen(true); }}}
+                      className={`flex flex-col items-center gap-3 transition-all cursor-pointer ${selectedPCId === pc.id ? 'scale-110' : 'hover:scale-105'}`}
+                    >
+                      <div className={`p-5 rounded-[1.5rem] shadow-sm relative transition-all border-2 ${
+                        pc.status === 'available' ? 'bg-emerald-50 text-emerald-500 border-emerald-100' : 'bg-rose-50 text-rose-500 border-rose-100'
+                      } ${selectedPCId === pc.id ? 'ring-4 ring-indigo-100 border-indigo-400' : ''}`}>
+                        <Monitor size={30} />
+                        {selectedPCId === pc.id && <div className="absolute -top-2 -right-2 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white ring-4 ring-white"><Power size={12}/></div>}
+                      </div>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{getPCName(pc.id)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-slate-50 flex justify-between bg-white">
+                <button onClick={onNavigateToLogs} className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:translate-x-2 transition-transform">
+                  <FileText size={16}/> View Maintenance Logs
+                </button>
+                {editMode && (
+                  <button onClick={handleSaveChanges} className="px-10 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all active:scale-95">
+                    Save Infrastructure Changes
                   </button>
-                ) : (
-                  <div className="flex gap-1">
-                    <button
-                      onClick={handleSaveChanges}
-                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 flex items-center gap-1"
-                    >
-                      <Save size={14} /> Save
-                    </button>
-                    <button
-                      onClick={handleCancelEdit}
-                      className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                )}
-                <button 
-                  onClick={() => setSelectedLab(null)}
-                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400 hover:text-slate-600"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body with Optional Sidebar */}
-            <div className="flex flex-1 overflow-hidden">
-              {/* Main PC Grid Area */}
-              <div className={`flex-1 overflow-y-auto p-6 transition-all duration-300 ${sidebarOpen ? 'pr-2' : ''}`}>
-                {/* Legend & Controls Bar */}
-                <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
-                  <div className="flex gap-6 p-3 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                      <span className="text-xs font-semibold text-slate-600">Available</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
-                      <span className="text-xs font-semibold text-slate-600">Unavailable / Issue</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    {editMode && (
-                      <>
-                        <button
-                          onClick={handleAddPC}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm"
-                        >
-                          <Plus size={14} /> Add PC
-                        </button>
-                        <button
-                          onClick={() => setSidebarOpen(!sidebarOpen)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
-                        >
-                          <Sidebar size={14} />
-                          {sidebarOpen ? 'Hide Details' : 'Show Details'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* PC Grid */}
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
-                  {editingPCs.map((pc) => {
-                    const isAvailable = pc.status === 'available';
-                    return (
-                      <div 
-                        key={pc.id} 
-                        className={`relative flex flex-col items-center gap-1 transition-all duration-200 group/pc ${
-                          editMode ? 'cursor-pointer' : ''
-                        }`}
-                        onClick={() => {
-                          if (editMode) {
-                            setSelectedPCId(pc.id);
-                            setSidebarOpen(true);
-                          }
-                        }}
-                      >
-                        {/* Delete button (visible on hover in edit mode) */}
-                        {editMode && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePC(pc.id);
-                            }}
-                            className="absolute -top-2 -right-2 z-10 p-1 bg-white rounded-full shadow-md text-rose-500 hover:text-rose-700 opacity-0 group-hover/pc:opacity-100 transition-opacity"
-                            title="Delete PC"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                        <div className={`p-2 rounded-lg transition-all duration-300 relative ${
-                          isAvailable 
-                            ? 'bg-emerald-50 text-emerald-500 border border-emerald-100' 
-                            : 'bg-rose-50 text-rose-500 border border-rose-100'
-                        } ${editMode ? 'hover:shadow-md hover:scale-105' : ''}`}>
-                          <Monitor size={24} strokeWidth={isAvailable ? 2 : 1.5} />
-                          {editMode && (
-                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-indigo-500 rounded-full border border-white"></div>
-                          )}
-                        </div>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">{getPCName(pc.id)}</span>
-                        {!isAvailable && pc.referenceNote && !editMode && (
-                          <div className="text-[8px] text-rose-400 text-center max-w-[60px] truncate" title={pc.referenceNote}>
-                            📝 {pc.referenceNote.substring(0, 15)}
-                          </div>
-                        )}
-                        {editMode && (
-                          <div className="text-[8px] text-indigo-500 mt-0.5">Click to edit</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-            
-              </div>
-
-              {/* Sidebar Panel for Editing PC Details */}
-              {sidebarOpen && editMode && selectedPC && (
-                <div className="w-80 border-l border-slate-200 bg-slate-50/80 p-5 overflow-y-auto flex-shrink-0 animate-in slide-in-from-right duration-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold text-slate-800">Edit {getPCName(selectedPC.id)}</h4>
-                    <button
-                      onClick={() => setSelectedPCId(null)}
-                      className="p-1 hover:bg-slate-200 rounded-full transition-colors"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-5">
-                    {/* Status Selection */}
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-500 mb-2">STATUS</label>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => handleStatusChange(selectedPC.id, 'available')}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg border transition-all ${
-                            selectedPC.status === 'available'
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <CheckCircle size={16} />
-                          <span className="text-sm font-medium">Available</span>
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(selectedPC.id, 'unavailable', selectedPC.referenceNote || 'Needs attention')}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg border transition-all ${
-                            selectedPC.status === 'unavailable'
-                              ? 'bg-rose-50 border-rose-300 text-rose-700'
-                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <AlertCircle size={16} />
-                          <span className="text-sm font-medium">Unavailable</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Reference Note (only for unavailable) */}
-                    {selectedPC.status === 'unavailable' && (
-                      <div className="animate-in fade-in duration-200">
-                        <label className="block text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
-                          <FileText size={12} /> REFERENCE NOTE / REASON
-                        </label>
-                        <textarea
-                          value={selectedPC.referenceNote || ''}
-                          onChange={(e) => handleReferenceChange(selectedPC.id, e.target.value)}
-                          placeholder="Enter reason for unavailability (e.g., broken screen, network issue, under repair)..."
-                          rows={4}
-                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                        />
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          This reference will appear in lab logs and reports.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Quick Stats for this PC */}
-                    <div className="pt-3 border-t border-slate-200">
-                      <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">Unit Information</p>
-                      <div className="bg-white rounded-lg p-3 text-xs space-y-1">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Unit ID:</span>
-                          <span className="font-mono font-bold">{getPCName(selectedPC.id)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Lab:</span>
-                          <span>{selectedLab.name} ({selectedLab.room})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Current Status:</span>
-                          <span className={selectedPC.status === 'available' ? 'text-emerald-600' : 'text-rose-600'}>
-                            {selectedPC.status === 'available' ? '✓ Available' : '✗ Unavailable'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
-              <div className="text-xs text-slate-400">
-                {editMode ? (
-                  <span>✏️ Editing mode active. Click "Save" to apply changes.</span>
-                ) : (
-                  <span> Total: {selectedLab.pcs} units | {selectedLab.avail} available | {selectedLab.issues} with issues</span>
                 )}
               </div>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setSelectedLab(null)}
-                  className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-100 transition-all"
-                >
-                  Close
-                </button>
-                <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex items-center gap-2">
-                  <Info size={16} /> View Lab Logs
-                </button>
-              </div>
             </div>
+
+            {/* Sidebar Control Panel */}
+            {sidebarOpen && selectedPCId && (
+              <div className="w-96 border-l border-slate-100 bg-slate-50/50 p-10 flex flex-col animate-in slide-in-from-right duration-500">
+                <div className="flex-1">
+                  <h4 className="text-xl font-black text-slate-800 uppercase tracking-tighter mb-2">Modify {getPCName(selectedPCId)}</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-10">Select operational status</p>
+
+                  <div className="space-y-4">
+                    {/* Status: Green */}
+                    <button 
+                      onClick={() => handleStatusChange(selectedPCId, 'available')}
+                      className={`w-full flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${
+                        editingPCs.find(pc => pc.id === selectedPCId)?.status === 'available' 
+                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100' 
+                        : 'bg-white border-slate-100 text-slate-400 hover:border-emerald-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <CheckCircle size={20}/>
+                        <span className="font-black uppercase tracking-widest text-[11px]">Available</span>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${editingPCs.find(pc => pc.id === selectedPCId)?.status === 'available' ? 'bg-white' : 'bg-emerald-500'}`}></div>
+                    </button>
+
+                    {/* Status: Red */}
+                    <button 
+                      onClick={() => handleStatusChange(selectedPCId, 'unavailable')}
+                      className={`w-full flex items-center justify-between p-6 rounded-3xl border-2 transition-all ${
+                        editingPCs.find(pc => pc.id === selectedPCId)?.status === 'unavailable' 
+                        ? 'bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-100' 
+                        : 'bg-white border-slate-100 text-slate-400 hover:border-rose-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <AlertCircle size={20}/>
+                        <span className="font-black uppercase tracking-widest text-[11px]">Issue Reported</span>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${editingPCs.find(pc => pc.id === selectedPCId)?.status === 'unavailable' ? 'bg-white' : 'bg-rose-500'}`}></div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Destructive Action Area */}
+                <div className="pt-8 border-t border-slate-200 mt-auto">
+                  <p className="text-[9px] font-black text-rose-400 uppercase mb-4 tracking-widest">REMOVE PC SELECTION</p>
+                  <button 
+                    onClick={() => handleDeletePC(selectedPCId)}
+                    className="w-full flex items-center justify-center gap-2 p-5 bg-rose-50 text-rose-600 rounded-3xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group"
+                  >
+                    <Trash2 size={16} className="group-hover:animate-bounce" />
+                    REMOVE PC
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
   );
 };
+
+// Initial Sample Data (Stay consistent with your lab counts)
+const generateInitialPCs = (count: number, issueIndices: number[]): PC[] => 
+  Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    status: issueIndices.includes(i + 1) ? 'unavailable' : 'available'
+  }));
+
+const initialLabs: Lab[] = [
+  { id: 1, name: 'Lab 1', room: 'CCS - Room 101', pcs: 30, avail: 28, issues: 2, pcsData: generateInitialPCs(30, [1, 2]) },
+  { id: 2, name: 'Lab 2', room: 'CCS - Room 102', pcs: 28, avail: 24, issues: 4, pcsData: generateInitialPCs(28, [5, 10, 11, 12]) },
+  { id: 3, name: 'Lab 3', room: 'CCS - Room 103', pcs: 20, avail: 15, issues: 5, pcsData: generateInitialPCs(20, [1, 2, 3, 4, 5]) },
+];
 
 export default Laboratories;
