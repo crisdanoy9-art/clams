@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         expanded ? 'w-80' : 'w-24'
       }`}
     >
-      {/* 3D flipping "C" section – unchanged */}
+      {/* 3D flipping "C" section */}
       <div className="h-44 flex items-center px-6 shrink-0 relative bg-gradient-to-b from-indigo-50/50 to-transparent">
         <div className="flex items-center gap-6 group cursor-pointer">
           <div className="relative w-16 h-16 preserve-3d">
@@ -79,8 +79,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* Footer: Logout above LAPSNADAS ADMIN */}
       <div className="p-6 mt-auto bg-slate-50/50 border-t border-slate-100">
+        <button
+          onClick={() => onSelect('logout')}
+          className="w-full flex items-center gap-5 px-5 py-5 rounded-2xl text-slate-400 hover:bg-rose-500 hover:text-white transition-all duration-500 group relative overflow-hidden"
+        >
+          <LogOut size={22} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+          <span className={`text-[11px] font-black uppercase tracking-widest relative z-10 transition-all duration-700 ${expanded ? 'opacity-100' : 'opacity-0'}`}>
+            Logout
+          </span>
+        </button>
+
         <div className={`mb-6 flex items-center gap-4 transition-all duration-700 ${expanded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
           <div className="relative group">
              <div className="w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white font-black text-xl shadow-xl transition-all group-hover:bg-indigo-600 group-hover:rotate-12">R</div>
@@ -91,15 +101,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <p className="text-[9px] text-indigo-500 font-bold uppercase tracking-widest mt-0.5 italic">version 1.0</p>
           </div>
         </div>
-        <button
-          onClick={() => onSelect('logout')}
-          className="w-full flex items-center gap-5 px-5 py-5 rounded-2xl text-slate-400 hover:bg-rose-500 hover:text-white transition-all duration-500 group relative overflow-hidden"
-        >
-          <LogOut size={22} className="relative z-10 group-hover:translate-x-1 transition-transform" />
-          <span className={`text-[11px] font-black uppercase tracking-widest relative z-10 transition-all duration-700 ${expanded ? 'opacity-100' : 'opacity-0'}`}>
-            End Session
-          </span>
-        </button>
       </div>
     </aside>
   );
