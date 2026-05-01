@@ -9,6 +9,7 @@ import Users from "./pages/Users";
 import ActivityLogs from "./pages/ActivityLogs";
 import DamageReports from "./pages/DamageReports";
 import Login from "./pages/Login";
+import { Navbar } from "./components/navBar";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,9 +28,9 @@ const App: React.FC = () => {
     setCurrentView("dashboard");
   };
 
-  if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
-  }
+  // if (!isLoggedIn) {
+  //   return <Login onLogin={handleLogin} />;
+  // }
 
   const renderView = () => {
     switch (currentView) {
@@ -69,34 +70,10 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100">
-      {/* Navbar - normal position, NOT sticky */}
-      <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between w-full">
-        <div>
-          <h2 className="font-black text-slate-800 uppercase tracking-tight text-lg">
-            {currentView.replace(/([A-Z])/g, " $1").trim()}
-          </h2>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">
-            CCS Laboratory Asset Management System
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-slate-900">
-              {userRole === "admin" ? "Raylle Admin" : "Staff Instructor"}
-            </p>
-            <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-tighter">
-              JRMSU Main Campus
-            </p>
-          </div>
-          <div className="w-10 h-10 bg-indigo-600 rounded-md shadow-lg shadow-indigo-100 flex items-center justify-center text-white font-black text-xl">
-            {userRole === "admin" ? "R" : "I"}
-          </div>
-        </div>
-      </header>
+      <Navbar currentView={currentView} userRole={userRole} />
 
       {/* Main content area with sidebar and content as siblings */}
       <div className="flex">
-        {/* Sidebar wrapper - sticky to follow screen when scrolling */}
         <div className="sticky top-0 h-screen">
           <Sidebar
             onSelect={setCurrentView}
