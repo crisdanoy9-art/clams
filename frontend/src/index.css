@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 @keyframes flip {
-  0% { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
 }
 
 .perspective-1000 {
@@ -24,3 +28,16 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ANIMATION SA MODAL ANG DROP DOWN */
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
