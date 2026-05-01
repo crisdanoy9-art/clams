@@ -27,9 +27,9 @@ const App: React.FC = () => {
     setCurrentView("dashboard");
   };
 
-  // if (!isLoggedIn) {
-  //   return <Login onLogin={handleLogin} />;
-  // }
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   const renderView = () => {
     switch (currentView) {
