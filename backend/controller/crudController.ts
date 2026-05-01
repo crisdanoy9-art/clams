@@ -36,7 +36,7 @@ export const GetOne = async (req: Request, res: Response): Promise<void> => {
     const idCol = getIdCol[table] as string;
     const data = await getOne(table, id, idCol);
     if (!data) {
-      res.status(404).json({ message: "Not found" });
+      res.status(404).json({ message: "data Not found" });
       return;
     }
     res.status(200).json({ data });
@@ -61,12 +61,12 @@ export const Post = async (req: Request, res: Response): Promise<void> => {
 export const Put = async (req: Request, res: Response): Promise<void> => {
   const table = req.params.table as string;
   const id = req.params.id as string;
-  const user_id = (req as any).user?.user_id ?? "system";
+  const user_id = (req as any).user?.user_id ?? null;
   try {
     const idCol = getIdCol[table] as string;
     const data = await updateOne(table, id, idCol, req.body);
     await insertLog(user_id, "UPDATE", table, id);
-    res.status(200).json({ message: "Updated", data });
+    res.status(200).json({ message: "successfully updated", data });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -75,16 +75,16 @@ export const Put = async (req: Request, res: Response): Promise<void> => {
 export const Delete = async (req: Request, res: Response): Promise<void> => {
   const table = req.params.table as string;
   const id = req.params.id as string;
-  const user_id = (req as any).user?.user_id ?? "system";
+  const user_id = (req as any).user?.user_id ?? null;
   try {
     const idCol = getIdCol[table] as string;
     const data = await softDelete(table, id, idCol);
     if (!data) {
-      res.status(404).json({ message: "Not found" });
+      res.status(404).json({ message: "data does not exist" });
       return;
     }
     await insertLog(user_id, "DELETE", table, id);
-    res.status(200).json({ message: "Deleted", data });
+    res.status(200).json({ message: "successfully deleted data", data });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
