@@ -35,7 +35,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
-        <div className="w-20 h-20 border-4 border-indigo-500 border-t-transparent rounded-md animate-spin mb-6"></div>
+        <div className="w-20 h-20 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6"></div>
         <h1 className="text-white font-black tracking-[0.5em] animate-pulse uppercase">
           Initializing Session...
         </h1>
@@ -46,13 +46,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 font-sans overflow-hidden relative">
       {/* Background Blurs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-50 rounded-md blur-[120px] opacity-60"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-100 rounded-md blur-[100px] opacity-40"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-50 rounded-full blur-[120px] opacity-60"></div>
+      <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-100 rounded-full blur-[100px] opacity-40"></div>
 
       <div className="w-full max-w-[650px] bg-white rounded-md shadow-[0_50px_100px_-20px_rgba(79,70,229,0.15)] p-14 border border-slate-100 relative z-10">
         <div className="flex flex-col items-center mb-14 text-center">
           <div className="relative w-24 h-24 perspective-1000 mb-8">
-            <div className="absolute inset-0 bg-indigo-600/20 rounded-md blur-[40px] animate-pulse"></div>
+            <div className="absolute inset-0 bg-indigo-600/20 rounded-full blur-[40px] animate-pulse"></div>
             <div className="w-full h-full relative animate-[flip_8s_linear_infinite] preserve-3d">
               <div className="absolute inset-0 w-full h-full bg-slate-900 rounded-[2rem] flex items-center justify-center border-2 border-indigo-500 shadow-2xl backface-hidden">
                 <span className="text-white font-black text-5xl italic tracking-tighter">
@@ -153,4 +153,3 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 };
 
 export default Login;
-
