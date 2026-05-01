@@ -9,7 +9,6 @@ import {
   Users,
   History,
   LogOut,
-  Package,
   FileBarChart,
 } from "lucide-react";
 
@@ -20,6 +19,39 @@ interface SidebarProps {
   expanded: boolean;
   onExpandChange: (expanded: boolean) => void;
 }
+
+const NavItem: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  isExpanded: boolean;
+  onClick: () => void;
+}> = ({ icon, label, isActive, isExpanded, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`relative w-full flex items-center rounded-xl transition-all duration-300 group ${
+      isExpanded ? "gap-4 px-4 py-3.5 justify-start" : "justify-center py-3.5"
+    } ${
+      isActive
+        ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
+        : "text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+    }`}
+  >
+    <div
+      className={`shrink-0 transition-transform duration-300 ${isActive ? "scale-110" : "group-hover:scale-110"}`}
+    >
+      {icon}
+    </div>
+    <span
+      className={`text-[11px] font-bold uppercase tracking-wide whitespace-nowrap transition-all duration-300 ${isExpanded ? "opacity-100" : "opacity-0 absolute"}`}
+    >
+      {label}
+    </span>
+    {isActive && (
+      <div className="absolute left-0 w-1.5 h-6 bg-indigo-500 rounded-r-full" />
+    )}
+  </button>
+);
 
 const Sidebar: React.FC<SidebarProps> = ({
   onSelect,
@@ -93,34 +125,26 @@ const Sidebar: React.FC<SidebarProps> = ({
     <aside
       onMouseEnter={() => onExpandChange(true)}
       onMouseLeave={() => onExpandChange(false)}
-      className={`h-screen bg-white shadow-xl flex flex-col border-r border-slate-100 transition-all duration-300 ease-out overflow-hidden flex-shrink-0 ${
-        expanded ? "w-64" : "w-16"
+      className={`h-screen bg-white shadow-xl flex flex-col border-r border-slate-100 transition-all duration-300 ease-out overflow-x-hidden flex-shrink-0 ${
+        expanded ? "w-64" : "w-20"
       }`}
     >
       {/* Logo Section */}
-      <div className="h-28 flex items-center px-3 shrink-0 relative">
+      <div className="h-28 flex items-center px-4 shrink-0 relative border-b border-slate-50">
         <div
-          className={`flex items-center transition-all duration-300 ease-out w-full ${
-            expanded ? "justify-start gap-3" : "justify-center"
-          }`}
+          className={`flex items-center gap-4 ${expanded ? "justify-start" : "justify-center"}`}
         >
-          <div className="relative w-12 h-12 shrink-0 aspect-square overflow-hidden">
+          <div className="relative w-12 h-12 shrink-0 aspect-square">
             <img
               src="/assets/logo.png"
               alt="Logo"
-              className="w-full h-full object-contain animate-spin"
-              style={{
-                animationDuration: "10s",
-                animationTimingFunction: "linear",
-              }}
+              className="w-full h-full object-contain"
             />
           </div>
+
+          {/* Text - just hide/show with opacity, no width changes */}
           <div
-            className={`flex flex-col transition-all duration-300 ease-out ${
-              expanded
-                ? "w-auto opacity-100 translate-x-0"
-                : "w-0 opacity-0 -translate-x-2"
-            }`}
+            className={`flex flex-col transition-opacity duration-300 ${expanded ? "opacity-100 delay-75" : "opacity-0 hidden"}`}
           >
             <h1 className="font-black text-slate-800 text-2xl leading-none tracking-tighter whitespace-nowrap">
               CLAMS
@@ -130,9 +154,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
         </div>
-      </div>{" "}
+      </div>
+
       {/* Navigation */}
-      <nav className="flex-1 py-3 space-y-1 px-2 overflow-y-auto">
+      <nav className="flex-1 py-8 space-y-4 px-3 overflow-y-auto scrollbar-hide overflow-x-hidden">
         {filteredNavItems.map((item) => (
           <NavItem
             key={item.id}
@@ -144,19 +169,20 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         ))}
       </nav>
+
       {/* Footer: Logout */}
-      <div className="p-3 mt-auto border-t border-slate-100">
+      <div className="p-4 pb-20">
         <button
           onClick={() => onSelect("logout")}
-          className={`w-full flex items-center rounded-md text-slate-400 hover:bg-rose-500 hover:text-white transition-all duration-200 ${
-            expanded ? "gap-2 px-2 py-2 justify-start" : "justify-center py-2"
+          className={`w-full flex items-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all duration-300 shadow-sm ${
+            expanded
+              ? "gap-3 px-4 py-3.5 justify-start"
+              : "justify-center py-3.5"
           }`}
         >
-          <LogOut size={18} className="shrink-0" />
+          <LogOut size={20} className="shrink-0" />
           <span
-            className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-out ${
-              expanded ? "w-auto opacity-100" : "w-0 opacity-0"
-            } overflow-hidden`}
+            className={`text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${expanded ? "w-auto opacity-100" : "w-0 opacity-0 absolute"}`}
           >
             Logout
           </span>
@@ -165,42 +191,5 @@ const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
-
-const NavItem: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  isExpanded: boolean;
-  onClick: () => void;
-}> = ({ icon, label, isActive, isExpanded, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center rounded-md transition-all duration-200 ${
-      isExpanded ? "gap-2 px-2 py-2 justify-start" : "justify-center py-2"
-    } ${
-      isActive
-        ? "bg-slate-900 text-white shadow-md"
-        : "text-slate-400 hover:bg-indigo-50 hover:text-indigo-600"
-    }`}
-  >
-    <div
-      className={`shrink-0 transition-transform duration-200 ${
-        isActive ? "scale-110" : ""
-      }`}
-    >
-      {icon}
-    </div>
-    <span
-      className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-out ${
-        isExpanded ? "w-auto opacity-100" : "w-0 opacity-0"
-      } overflow-hidden`}
-    >
-      {label}
-    </span>
-    {isActive && (
-      <div className="absolute left-0 w-1 h-4 bg-indigo-500 rounded-r-full"></div>
-    )}
-  </button>
-);
 
 export default Sidebar;
