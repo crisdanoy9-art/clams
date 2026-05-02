@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { findUser, createUser } from "../model/authQueries";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { deleteUploadedFile } from "../middleware/upload";
 
 export const Login = async (req: Request, res: Response) => {
   const { username, password } = req.body;
@@ -43,16 +44,10 @@ export const Login = async (req: Request, res: Response) => {
 export const Register = async (req: Request, res: Response) => {
   try {
     console.log("Register body:", req.body);
-    console.log("DB config:", {
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-      database: process.env.DB_NAME,
-    });
-
     const { username, password, ...rest } = req.body;
 
     if (!username || !password) {
+      if (req.file) deleteUploadedFile(req.file.path); // ← add this
       return res
         .status(400)
         .json({ message: "Username and password are required" });
@@ -60,15 +55,15 @@ export const Register = async (req: Request, res: Response) => {
 
     const existing = await findUser(username);
     if (existing) {
+      if (req.file) deleteUploadedFile(req.file.path); // ← add this
       return res.status(409).json({ message: "Username already exists" });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-
     const newUser = await createUser({ ...rest, username, password_hash });
-
     return res.status(201).json({ message: "User registered", data: newUser });
   } catch (e: any) {
+    if (req.file) deleteUploadedFile(req.file.path); // ← and this for any unexpected error
     return res.status(500).json({ error: e.message });
   }
 };
