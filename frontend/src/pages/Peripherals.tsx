@@ -10,24 +10,8 @@ import {
 
 const Peripherals: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [peripherals, setPeripherals] = useState([
-    {
-      id: 1,
-      name: "Logitech USB Mouse",
-      lab: "Lab 1",
-      working: 32,
-      damaged: 3,
-      category: "Pointing Device",
-    },
-    {
-      id: 2,
-      name: "Standard Keyboard",
-      lab: "Lab 2",
-      working: 30,
-      damaged: 0,
-      category: "Input",
-    },
-  ]);
+  // Start with an empty array – no example peripherals
+  const [peripherals, setPeripherals] = useState<any[]>([]);
 
   const [newItem, setNewItem] = useState({
     name: "",
@@ -37,13 +21,22 @@ const Peripherals: React.FC = () => {
   });
 
   const handleAdd = () => {
-    if (newItem.name && newItem.category) {
+    if (newItem.name && newItem.category && newItem.working > 0) {
       setPeripherals([
         ...peripherals,
-        { ...newItem, id: Date.now(), damaged: 0 },
+        {
+          id: Date.now(),
+          name: newItem.name,
+          lab: newItem.lab,
+          category: newItem.category,
+          working: newItem.working,
+          damaged: 0,
+        },
       ]);
       setIsModalOpen(false);
       setNewItem({ name: "", lab: "Lab 1", category: "", working: 0 });
+    } else {
+      alert("Please fill all fields and set a valid stock count.");
     }
   };
 
@@ -68,7 +61,7 @@ const Peripherals: React.FC = () => {
 
       {/* Modal Overlay */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-none  h-full">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-none h-full">
           <div className="bg-white w-full max-w-md rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]">
             <div className="bg-indigo-600 p-8 text-white flex justify-between items-center">
               <h3 className="font-black uppercase tracking-tighter text-xl">
@@ -108,6 +101,16 @@ const Peripherals: React.FC = () => {
                   setNewItem({ ...newItem, category: e.target.value })
                 }
               />
+              <input
+                type="number"
+                placeholder="Working Units (Stock)"
+                min="1"
+                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all"
+                value={newItem.working || ""}
+                onChange={(e) =>
+                  setNewItem({ ...newItem, working: parseInt(e.target.value) || 0 })
+                }
+              />
               <button
                 onClick={handleAdd}
                 className="w-full bg-indigo-600 text-white py-4 rounded-md font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
@@ -119,7 +122,7 @@ const Peripherals: React.FC = () => {
         </div>
       )}
 
-      {/* Table Section */}
+      {/* Table Section with empty state */}
       <div className="bg-white rounded-md border border-slate-200 overflow-hidden shadow-sm">
         <table className="w-full text-left">
           <thead className="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b">
@@ -159,6 +162,13 @@ const Peripherals: React.FC = () => {
                 </td>
               </tr>
             ))}
+            {peripherals.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-8 py-12 text-center text-slate-400">
+                  No peripherals added yet. Click "Add New Item" to get started.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

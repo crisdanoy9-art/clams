@@ -18,15 +18,15 @@ interface DashboardProps {
 }
 
 const DashboardProp: React.FC<DashboardProps> = ({}) => {
-  // Calculate realistic progress percentages
-  const totalPcs = 86;
-  const availableUnits = 74;
-  const borrowedItems = 8;
-  const damageReports = 4;
+  // All stats are zero – ready to be replaced with real data from props/API
+  const totalPcs = 0;
+  const availableUnits = 0;
+  const borrowedItems = 0;
+  const damageReports = 0;
 
-  const availablePercent = (availableUnits / totalPcs) * 100;
-  const borrowedPercent = (borrowedItems / totalPcs) * 100;
-  const damagePercent = (damageReports / totalPcs) * 100;
+  const availablePercent = totalPcs === 0 ? 0 : (availableUnits / totalPcs) * 100;
+  const borrowedPercent = totalPcs === 0 ? 0 : (borrowedItems / totalPcs) * 100;
+  const damagePercent = totalPcs === 0 ? 0 : (damageReports / totalPcs) * 100;
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-700">
@@ -43,7 +43,7 @@ const DashboardProp: React.FC<DashboardProps> = ({}) => {
           <StatCard
             title="TOTAL PCs"
             value={totalPcs.toString()}
-            subtitle="Across all 3 labs"
+            subtitle="Across all labs"
             icon={<Monitor className="text-indigo-500" strokeWidth={1.8} />}
             progressColor="bg-indigo-500"
             progressWidth={100}
@@ -85,67 +85,27 @@ const DashboardProp: React.FC<DashboardProps> = ({}) => {
           />
         </div>
 
-        {/* Laboratory Overview - full width */}
+        {/* Laboratory Overview - empty state */}
         <div className="mb-8">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
             Laboratory Overview
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <LabCard
-              name="Lab 1"
-              room="Room 101"
-              pcs={30}
-              avail={28}
-              issues={2}
-            />
-            <LabCard
-              name="Lab 2"
-              room="Room 102"
-              pcs={28}
-              avail={24}
-              issues={4}
-            />
-            <LabCard
-              name="Lab 3"
-              room="Room 103"
-              pcs={28}
-              avail={22}
-              issues={6}
-            />
+            <div className="col-span-full text-center py-12 bg-white rounded-md border border-slate-200">
+              <Monitor size={32} className="mx-auto text-slate-300 mb-3" />
+              <p className="text-sm text-slate-500">No laboratories added yet.</p>
+            </div>
           </div>
         </div>
 
-        {/* Recent Activity - below labs, full width */}
+        {/* Recent Activity - empty state */}
         <div className="mb-8">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
             Recent Activity
           </h3>
-          <div className="bg-white rounded-md  border border-slate-200 shadow-sm p-5 space-y-5">
-            <ActivityItem
-              icon={<HandHelping className="w-4 h-4 text-indigo-500" />}
-              text="Keyboard borrowed from Lab 1 by J. Santos"
-              time="Today 13:42 PM"
-            />
-            <ActivityItem
-              icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
-              text="Damage report filed - Monitor #14, lab 3"
-              time="Today 10:15 PM"
-            />
-            <ActivityItem
-              icon={<Monitor className="w-4 h-4 text-slate-500" />}
-              text="Equipment record updated - Dell OptiPlex, Lab 1"
-              time="Yesterday 02:39 PM"
-            />
-            <ActivityItem
-              icon={<Users className="w-4 h-4 text-emerald-500" />}
-              text="New instructor account created"
-              time="Yesterday 02:39 PM"
-            />
-            <ActivityItem
-              icon={<PackageCheck className="w-4 h-4 text-amber-500" />}
-              text="Headset returned - Lab 1 transaction #TXN-041"
-              time="Apr 26 04:10 PM"
-            />
+          <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
+            <Clock size={28} className="mx-auto text-slate-300 mb-2" />
+            <p className="text-sm text-slate-500">No recent activity to show.</p>
           </div>
         </div>
 
@@ -205,67 +165,4 @@ const StatCard: React.FC<{
   </div>
 );
 
-/* LabCard with modern subtle styling */
-const LabCard: React.FC<{
-  name: string;
-  room: string;
-  pcs: number;
-  avail: number;
-  issues: number;
-}> = ({ name, room, pcs, avail, issues }) => (
-  <div className="bg-white p-5 rounded-md border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex justify-between items-center mb-6">
-      <div>
-        <h4 className="font-bold text-slate-800">{name}</h4>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5">{room}</p>
-      </div>
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-        <CircleDot className="text-emerald-500 w-2.5 h-2.5 fill-emerald-500" />
-        <span className="text-[10px] font-bold text-emerald-600 uppercase">
-          Online
-        </span>
-      </div>
-    </div>
-    <div className="flex justify-between text-center border-t border-slate-100 pt-4">
-      <div>
-        <p className="text-xl font-bold text-slate-800">{pcs}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          PCS
-        </p>
-      </div>
-      <div>
-        <p className="text-xl font-bold text-emerald-600">{avail}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          Available
-        </p>
-      </div>
-      <div>
-        <p className="text-xl font-bold text-rose-500">{issues}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          Issues
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-/* ActivityItem with colored icons and cleaner layout */
-const ActivityItem: React.FC<{
-  icon: React.ReactNode;
-  text: string;
-  time: string;
-}> = ({ icon, text, time }) => (
-  <div className="flex gap-3 group">
-    <div className="mt-0.5">{icon}</div>
-    <div className="flex-1 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-      <p className="text-sm font-medium text-slate-700 leading-snug">{text}</p>
-      <div className="flex items-center gap-1 mt-1">
-        <Clock size={10} className="text-slate-400" />
-        <p className="text-[11px] text-slate-400">{time}</p>
-      </div>
-    </div>
-  </div>
-);
-
 export default DashboardProp;
-

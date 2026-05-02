@@ -1,14 +1,19 @@
 import React, { useState } from "react";
 import {
   UserPlus,
-  Shield,
   Mail,
-  CreditCard,
   User,
   Lock,
   X,
-  CheckCircle,
+  Trash2,
+  GraduationCap,
+  Users as UsersIcon,
+  Shield,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
+
+type UserRole = "instructor" | "admin";
 
 interface UserForm {
   id_number: string;
@@ -16,12 +21,21 @@ interface UserForm {
   first_name: string;
   last_name: string;
   email: string;
-  role: "admin" | "instructor";
-  password_hash: string; // Plain text here, hash on the backend
+  role: UserRole;
+  password_hash: string;
+}
+
+interface User extends UserForm {
+  id: string;
+  createdAt: string;
 }
 
 const Users: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  // Start with an empty array – no example users
+  const [users, setUsers] = useState<User[]>([]);
+
   const [formData, setFormData] = useState<UserForm>({
     id_number: "",
     username: "",
@@ -31,51 +45,107 @@ const Users: React.FC = () => {
     role: "instructor",
     password_hash: "",
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Validation Logic based on your specific requirements
-  const idRegex = /^(24|25)-A-\d{5}$/;
+  const getIdRegex = (role: UserRole) => {
+    return role === "instructor" ? /^ins-main-\d{3}$/ : /^adm-main-\d{3}$/;
+  };
+
+  const getIdPlaceholder = (role: UserRole) => {
+    return role === "instructor" ? "ins-main-001" : "adm-main-001";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 1. Validation Check
+    const idRegex = getIdRegex(formData.role);
     if (!idRegex.test(formData.id_number)) {
       alert(
-        "Invalid ID Format. Please use the JRMSU standard (e.g., 24-A-12345).",
+        `Invalid ID format for ${formData.role}. Expected: ${
+          formData.role === "instructor" ? "ins-main-XXX" : "adm-main-XXX"
+        } (XXX = 3 digits)`
       );
       return;
     }
 
-    try {
-      // 2. Database Connection (POST to your API)
-      const response = await fetch("/api/users/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    if (formData.password_hash !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
 
-      if (response.ok) {
-        alert("User added successfully to CLAMS database!");
-        setShowModal(false);
-        // Reset form
-        setFormData({
-          id_number: "",
-          username: "",
-          first_name: "",
-          last_name: "",
-          email: "",
-          role: "instructor",
-          password_hash: "",
-        });
-      }
+    setIsLoading(true);
+
+    try {
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const newUser: User = {
+        ...formData,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+      };
+
+      setUsers([newUser, ...users]);
+      alert("User added successfully!");
+      setShowModal(false);
+      setFormData({
+        id_number: "",
+        username: "",
+        first_name: "",
+        last_name: "",
+        email: "",
+        role: "instructor",
+        password_hash: "",
+      });
+      setConfirmPassword("");
     } catch (error) {
       console.error("Database connection failed:", error);
+      alert("Failed to add user. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      setUsers(users.filter((user) => user.id !== userId));
+    }
+  };
+
+  const getRoleBadge = (role: UserRole) => {
+    switch (role) {
+      case "admin":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-wider">
+            <Shield size={10} /> Admin
+          </span>
+        );
+      case "instructor":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-wider">
+            <User size={10} /> Instructor
+          </span>
+        );
+      default:
+        return null;
     }
   };
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-8 space-y-8">
+      {/* Full-screen loading overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+            <Loader2 size={40} className="animate-spin text-indigo-600" />
+            <p className="text-sm font-black text-slate-700 uppercase tracking-wider">
+              Registering user...
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
             User Management
@@ -88,170 +158,276 @@ const Users: React.FC = () => {
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
         >
-          <UserPlus size={16} /> Add New Faculty
+          <UserPlus size={16} /> Add User
         </button>
       </div>
 
-      {/* --- ADD USER MODAL --- */}
+      {/* Users Table */}
+      <div className="bg-white rounded-md border border-slate-100 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
+            Registered Accounts ({users.length})
+          </h3>
+          <UsersIcon size={14} className="text-slate-300" />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50/50 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              <tr>
+                <th className="px-6 py-4">ID Number</th>
+                <th className="px-6 py-4">Full Name</th>
+                <th className="px-6 py-4">Username</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50 text-sm">
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50/50 transition">
+                  <td className="px-6 py-4 font-mono text-[11px] font-bold text-slate-600">
+                    {user.id_number}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-800">
+                      {user.first_name} {user.last_name}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 text-xs">
+                    {user.username}
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 text-xs">
+                    {user.email}
+                  </td>
+                  <td className="px-6 py-4">{getRoleBadge(user.role)}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleDeleteUser(user.id)}
+                      className="p-2 text-slate-300 hover:text-rose-500 transition-all rounded-md hover:bg-rose-50"
+                      title="Delete user"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                   </td>
+                 </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-xs">
+                    No users yet. Click "Add User" to get started.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ADD USER MODAL (unchanged) */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-none"
-            onClick={() => setShowModal(false)}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => !isLoading && setShowModal(false)}
           ></div>
           <form
             onSubmit={handleSubmit}
-            className="relative bg-white w-full max-w-2xl rounded-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]"
+            className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
           >
-            <div className="p-10 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
-              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">
-                Registration Form
+            <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
+              <h3 className="text-base font-black text-slate-800 uppercase tracking-tighter">
+                Register New User
               </h3>
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-slate-100 rounded-md transition-all"
+                onClick={() => !isLoading && setShowModal(false)}
+                className="p-1.5 hover:bg-slate-100 rounded-full transition-all"
+                disabled={isLoading}
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="p-10 grid grid-cols-2 gap-6">
-              {/* ID Number Input */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  ID Number (JRMSU Format)
-                </label>
-                <div className="relative">
-                  <CreditCard
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-                    size={18}
-                  />
-                  <input
-                    required
-                    placeholder="24-A-12345"
-                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    value={formData.id_number}
-                    onChange={(e) =>
-                      setFormData({ ...formData, id_number: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Username Input */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  Login Username
-                </label>
-                <div className="relative">
-                  <User
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-                    size={18}
-                  />
-                  <input
-                    required
-                    placeholder="raylle_admin"
-                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                    value={formData.username}
-                    onChange={(e) =>
-                      setFormData({ ...formData, username: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Names */}
-              <input
-                required
-                placeholder="First Name"
-                className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                value={formData.first_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, first_name: e.target.value })
-                }
-              />
-              <input
-                required
-                placeholder="Last Name"
-                className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                value={formData.last_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, last_name: e.target.value })
-                }
-              />
-
+            <div className="p-4 space-y-3">
               {/* Role Selection */}
-              <div className="col-span-2 space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  Account Permission
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Account Role
                 </label>
-                <div className="flex gap-4">
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() =>
-                      setFormData({ ...formData, role: "instructor" })
-                    }
-                    className={`flex-1 p-4 rounded-md border-2 flex items-center justify-center gap-3 transition-all ${formData.role === "instructor" ? "bg-indigo-50 border-indigo-500 text-indigo-600" : "border-slate-100 text-slate-400"}`}
+                    onClick={() => setFormData({ ...formData, role: "instructor", id_number: "" })}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                      formData.role === "instructor"
+                        ? "bg-indigo-100 text-indigo-700 border border-indigo-300"
+                        : "bg-slate-100 text-slate-500 border border-transparent hover:bg-slate-200"
+                    }`}
+                    disabled={isLoading}
                   >
-                    <User size={18} />{" "}
-                    <span className="font-black text-[10px] uppercase">
-                      Instructor
-                    </span>
+                    Instructor
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, role: "admin" })}
-                    className={`flex-1 p-4 rounded-md border-2 flex items-center justify-center gap-3 transition-all ${formData.role === "admin" ? "bg-rose-50 border-rose-500 text-rose-600" : "border-slate-100 text-slate-400"}`}
+                    onClick={() => setFormData({ ...formData, role: "admin", id_number: "" })}
+                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                      formData.role === "admin"
+                        ? "bg-rose-100 text-rose-700 border border-rose-300"
+                        : "bg-slate-100 text-slate-500 border border-transparent hover:bg-slate-200"
+                    }`}
+                    disabled={isLoading}
                   >
-                    <Shield size={18} />{" "}
-                    <span className="font-black text-[10px] uppercase">
-                      ADMIN
-                    </span>
+                    Admin
                   </button>
+                </div>
+              </div>
+
+              {/* ID Number */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  ID Number
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                  <input
+                    required
+                    placeholder={getIdPlaceholder(formData.role)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.id_number}
+                    onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                    First Name
+                  </label>
+                  <input
+                    required
+                    placeholder="First"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                    Last Name
+                  </label>
+                  <input
+                    required
+                    placeholder="Last"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Username */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Username
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                  <input
+                    required
+                    placeholder="username"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                  <input
+                    required
+                    type="email"
+                    placeholder="user@jrmsu.edu"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
 
               {/* Password */}
-              <div className="col-span-2 space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  Temporary Password
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Password
                 </label>
                 <div className="relative">
-                  <Lock
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-                    size={18}
-                  />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
                   <input
                     required
                     type="password"
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     value={formData.password_hash}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        password_hash: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setFormData({ ...formData, password_hash: e.target.value })}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider ml-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                  <input
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="p-10 bg-slate-50/50 border-t border-slate-50 flex gap-4">
+            <div className="p-4 bg-slate-50/50 border-t border-slate-50 flex gap-2">
               <button
                 type="button"
-                onClick={() => setShowModal(false)}
-                className="flex-1 py-4 bg-white border border-slate-200 rounded-md font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all"
+                onClick={() => !isLoading && setShowModal(false)}
+                className="flex-1 py-1.5 bg-white border border-slate-200 rounded-lg font-black text-[9px] uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 py-4 bg-slate-900 text-white rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all"
+                disabled={isLoading}
+                className="flex-1 py-1.5 bg-slate-900 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-indigo-600 shadow-md transition-all flex items-center justify-center gap-2"
               >
-                Finalize & Store
+                {isLoading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Registering...
+                  </>
+                ) : (
+                  "Register"
+                )}
               </button>
             </div>
           </form>

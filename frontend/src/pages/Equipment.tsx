@@ -27,36 +27,8 @@ const Equipment: React.FC = () => {
   const [expandedLab, setExpandedLab] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const [assets, setAssets] = useState<Asset[]>([
-    {
-      id: "ASSET-001",
-      name: "Dell",
-      model: "Optiplex 7080",
-      lab: "Laboratory 1",
-      status: "Available",
-    },
-    {
-      id: "ASSET-002",
-      name: "Logitech",
-      model: "G-Pro Mouse",
-      lab: "Laboratory 2",
-      status: "In Use",
-    },
-    {
-      id: "ASSET-003",
-      name: "TP-Link",
-      model: "Router",
-      lab: "Laboratory 1",
-      status: "Maintenance",
-    },
-    {
-      id: "ASSET-004",
-      name: "HP",
-      model: "EliteBook",
-      lab: "Laboratory 3",
-      status: "Available",
-    },
-  ]);
+  // Start with an empty inventory – no example data
+  const [assets, setAssets] = useState<Asset[]>([]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -66,7 +38,7 @@ const Equipment: React.FC = () => {
     stock: 1,
   });
 
-  // Helper: Generate sequential asset IDs
+  // Helper: Generate sequential asset IDs (works even when assets list is empty)
   const getNextIdNumbers = (count: number): string[] => {
     const idNumbers = assets.map((asset) => {
       const match = asset.id.match(/ASSET-(\d+)/);
@@ -108,15 +80,15 @@ const Equipment: React.FC = () => {
     });
   };
 
-  // Dashboard totals
+  // Dashboard totals (all zero when inventory is empty)
   const totalItems = assets.length;
   const availableCount = assets.filter((a) => a.status === "Available").length;
   const inUseCount = assets.filter((a) => a.status === "In Use").length;
   const maintenanceCount = assets.filter(
-    (a) => a.status === "Maintenance",
+    (a) => a.status === "Maintenance"
   ).length;
 
-  // Per-lab statistics and asset lists
+  // Per-lab statistics (empty when no assets)
   const labStats = assets.reduce(
     (acc, asset) => {
       if (!acc[asset.lab]) {
@@ -144,7 +116,7 @@ const Equipment: React.FC = () => {
         maintenance: number;
         assets: Asset[];
       }
-    >,
+    >
   );
 
   // Filter assets by selected lab (for main table)
@@ -188,9 +160,8 @@ const Equipment: React.FC = () => {
         </button>
       </div>
 
-      {/* Dashboard Stats - Total Stock (clickable, no prompt text) + Status Cards */}
+      {/* Dashboard Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {/* Total Stock card - click clears filter & scrolls, but no extra text */}
         <div
           onClick={() => {
             if (selectedLab) clearFilter();
@@ -205,7 +176,6 @@ const Equipment: React.FC = () => {
           <p className="text-xl font-bold text-slate-800">{totalItems}</p>
         </div>
 
-        {/* Available card */}
         <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 text-emerald-500 mb-1">
             <CheckCircle2 size={16} />
@@ -214,7 +184,6 @@ const Equipment: React.FC = () => {
           <p className="text-xl font-bold text-slate-800">{availableCount}</p>
         </div>
 
-        {/* In Use card */}
         <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 text-blue-500 mb-1">
             <Cpu size={16} />
@@ -223,7 +192,6 @@ const Equipment: React.FC = () => {
           <p className="text-xl font-bold text-slate-800">{inUseCount}</p>
         </div>
 
-        {/* Maintenance card */}
         <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm">
           <div className="flex items-center gap-2 text-rose-500 mb-1">
             <Wrench size={16} />
@@ -233,7 +201,7 @@ const Equipment: React.FC = () => {
         </div>
       </div>
 
-      {/* Laboratories Summary with Expand/Collapse */}
+      {/* Laboratories Summary */}
       <div className="mb-8">
         <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3 flex items-center gap-2">
           <MapPin size={16} className="text-indigo-500" /> Laboratories Summary
@@ -244,7 +212,6 @@ const Equipment: React.FC = () => {
               key={lab}
               className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden transition-all"
             >
-              {/* Card Header - click to expand/collapse */}
               <div
                 className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between"
                 onClick={() => toggleExpand(lab)}
@@ -256,7 +223,6 @@ const Equipment: React.FC = () => {
                   <h4 className="font-bold text-slate-700">{lab}</h4>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Total badge (click stops propagation to avoid toggling expand) */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -274,7 +240,6 @@ const Equipment: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status bars (always visible) */}
               <div className="px-4 pb-3 grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="bg-emerald-50 rounded-md p-2">
                   <p className="text-emerald-600 font-bold">
@@ -292,7 +257,6 @@ const Equipment: React.FC = () => {
                 </div>
               </div>
 
-              {/* Expandable content: list of assets */}
               {expandedLab === lab && (
                 <div className="border-t border-zinc-200 bg-slate-50/50 p-3">
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">
@@ -330,15 +294,15 @@ const Equipment: React.FC = () => {
               )}
             </div>
           ))}
+          {Object.keys(labStats).length === 0 && (
+            <div className="col-span-full text-center py-8 bg-slate-50 rounded-md text-slate-400">
+              No laboratories found. Add assets to create laboratory listings.
+            </div>
+          )}
         </div>
-        {Object.keys(labStats).length === 0 && (
-          <div className="text-center py-8 bg-slate-50 rounded-md text-slate-400">
-            No laboratories found
-          </div>
-        )}
       </div>
 
-      {/* Table Section (with ref for scrolling) */}
+      {/* Main Table */}
       <div
         ref={tableRef}
         className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden"
@@ -429,7 +393,7 @@ const Equipment: React.FC = () => {
                     colSpan={5}
                     className="px-6 py-12 text-center text-slate-400"
                   >
-                    No assets found in this laboratory.
+                    No assets found. Click "Add New Asset" to get started.
                   </td>
                 </tr>
               )}
@@ -438,10 +402,10 @@ const Equipment: React.FC = () => {
         </div>
       </div>
 
-      {/* --- ADD ASSET MODAL --- */}
+      {/* Add Asset Modal remains unchanged */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-none ">
-          <div className="bg-white w-full max-w-lg rounded-md shadow-2xl animate-in zoom-in duration-200 overflow-hidden animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-none">
+          <div className="bg-white w-full max-w-lg rounded-md shadow-2xl animate-in zoom-in duration-200 overflow-hidden">
             <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-indigo-600">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <Plus size={20} /> Register New Asset(s)

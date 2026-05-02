@@ -9,6 +9,7 @@ import {
   Trash2,
   Power,
   Eye,
+  Loader2,
 } from "lucide-react";
 
 interface LaboratoriesProps {
@@ -38,7 +39,7 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
   userRole,
   onNavigateToLogs,
 }) => {
-  const [labsData, setLabsData] = useState<Lab[]>(initialLabs);
+  const [labsData, setLabsData] = useState<Lab[]>([]); // No example data, start empty
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +51,13 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
   const [newLabPCs, setNewLabPCs] = useState(20);
   const [tempNote, setTempNote] = useState("");
   const [notification, setNotification] = useState<{ message: string; type: "success" | "info" } | null>(null);
+  
+  // Loading states
+  const [isAddingLab, setIsAddingLab] = useState(false);
+  const [isDeletingLab, setIsDeletingLab] = useState<number | null>(null);
+  const [isAddingPC, setIsAddingPC] = useState(false);
+  const [isDeletingPC, setIsDeletingPC] = useState<number | null>(null);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
 
   const isAdmin = userRole === "admin";
 
@@ -107,19 +115,26 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
     }
   };
 
-  const handleDeletePC = (pcId: number) => {
+  const handleDeletePC = async (pcId: number) => {
     const confirmDelete = window.confirm(
       `Are you sure you want to delete PC-${pcId.toString().padStart(2, "0")}? This will remove it from the lab inventory.`
     );
-    if (confirmDelete) {
-      setEditingPCs((prev) => prev.filter((pc) => pc.id !== pcId));
-      setSidebarOpen(false);
-      setSelectedPCId(null);
-      setNotification({ message: "PC removed", type: "info" });
-    }
+    if (!confirmDelete) return;
+
+    setIsDeletingPC(pcId);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    setEditingPCs((prev) => prev.filter((pc) => pc.id !== pcId));
+    setSidebarOpen(false);
+    setSelectedPCId(null);
+    setNotification({ message: "PC removed", type: "info" });
+    setIsDeletingPC(null);
   };
 
-  const handleAddPC = () => {
+  const handleAddPC = async () => {
+    setIsAddingPC(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
     const nextId = Math.max(...editingPCs.map((pc) => pc.id), 0) + 1;
     const newPC: PC = {
       id: nextId,
@@ -127,16 +142,17 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
     };
     setEditingPCs((prev) => [...prev, newPC]);
     setNotification({ message: `Added ${getPCName(nextId)}`, type: "success" });
+    setIsAddingPC(false);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedLab) return;
-    const available = editingPCs.filter(
-      (pc) => pc.status === "available"
-    ).length;
-    const issues = editingPCs.filter(
-      (pc) => pc.status === "unavailable"
-    ).length;
+
+    setIsSavingChanges(true);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const available = editingPCs.filter((pc) => pc.status === "available").length;
+    const issues = editingPCs.filter((pc) => pc.status === "unavailable").length;
 
     const updatedLab = {
       ...selectedLab,
@@ -152,13 +168,17 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
     setEditMode(false);
     setSidebarOpen(false);
     setNotification({ message: "Infrastructure changes saved", type: "success" });
+    setIsSavingChanges(false);
   };
 
-  const handleAddLab = () => {
+  const handleAddLab = async () => {
     if (!newLabName.trim() || !newLabRoom.trim() || newLabPCs < 1) {
       alert("Please fill all fields with valid values.");
       return;
     }
+
+    setIsAddingLab(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
     const newId = Math.max(...labsData.map((lab) => lab.id), 0) + 1;
     const pcsData: PC[] = Array.from({ length: newLabPCs }, (_, i) => ({
@@ -182,13 +202,27 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
     setNewLabRoom("");
     setNewLabPCs(20);
     setNotification({ message: `Laboratory "${newLab.name}" created`, type: "success" });
+    setIsAddingLab(false);
+  };
+
+  const handleDeleteLab = async (labId: number, labName: string) => {
+    const confirmDelete = window.confirm(`Are you sure you want to delete "${labName}"? This will permanently remove the laboratory and all its PC data.`);
+    if (!confirmDelete) return;
+
+    setIsDeletingLab(labId);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    setLabsData((prev) => prev.filter((lab) => lab.id !== labId));
+    if (selectedLab?.id === labId) {
+      setSelectedLab(null);
+    }
+    setNotification({ message: `Laboratory "${labName}" deleted`, type: "success" });
+    setIsDeletingLab(null);
   };
 
   const getPCName = (id: number) => `PC-${id.toString().padStart(2, "0")}`;
 
   const currentSelectedPC = editingPCs.find((pc) => pc.id === selectedPCId);
-
-  // Determine if sidebar should be in edit mode (admin + editMode)
   const isEditSidebar = isAdmin && editMode;
 
   return (
@@ -234,52 +268,78 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
         {labsData.map((lab) => (
           <div
             key={lab.id}
-            onClick={() => setSelectedLab(lab)}
-            className="bg-white p-8 rounded-md border border-zinc-200 shadow-sm hover:border-indigo-100 cursor-pointer transition-all group"
+            className="relative bg-white p-8 rounded-md border border-zinc-200 shadow-sm hover:border-indigo-100 cursor-pointer transition-all group"
           >
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-black text-slate-800 text-2xl uppercase tracking-tighter">
-                {lab.name}
-              </h4>
-              <div className="bg-emerald-50 text-emerald-500 px-3 py-1 rounded-md border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
-                Active
+            <div onClick={() => setSelectedLab(lab)}>
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-black text-slate-800 text-2xl uppercase tracking-tighter">
+                  {lab.name}
+                </h4>
+                <div className="bg-emerald-50 text-emerald-500 px-3 py-1 rounded-md border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
+                  Active
+                </div>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+                {lab.room}
+              </p>
+              <div className="flex gap-6 border-t border-zinc-50 pt-6">
+                <div>
+                  <p className="text-xl font-black text-slate-800">{lab.pcs}</p>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Total
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xl font-black text-emerald-500">
+                    {lab.avail}
+                  </p>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Ready
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xl font-black text-rose-500">{lab.issues}</p>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                    Issues
+                  </p>
+                </div>
               </div>
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
-              {lab.room}
-            </p>
-            <div className="flex gap-6 border-t border-zinc-50 pt-6">
-              <div>
-                <p className="text-xl font-black text-slate-800">{lab.pcs}</p>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Total
-                </p>
-              </div>
-              <div>
-                <p className="text-xl font-black text-emerald-500">
-                  {lab.avail}
-                </p>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Ready
-                </p>
-              </div>
-              <div>
-                <p className="text-xl font-black text-rose-500">{lab.issues}</p>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  Issues
-                </p>
-              </div>
-            </div>
+            {/* Delete Laboratory Button (Admin only) */}
+            {isAdmin && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteLab(lab.id, lab.name);
+                }}
+                disabled={isDeletingLab === lab.id}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-white/80 text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                title="Delete Laboratory"
+              >
+                {isDeletingLab === lab.id ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+              </button>
+            )}
           </div>
         ))}
+        {labsData.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <p className="text-xs text-slate-400 font-black uppercase tracking-widest">
+              No laboratories yet. Click "Add Laboratory" to create one.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Add Laboratory Modal */}
+      {/* Add Laboratory Modal with loading state */}
       {showAddLabModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           <div
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-            onClick={() => setShowAddLabModal(false)}
+            onClick={() => !isAddingLab && setShowAddLabModal(false)}
           ></div>
           <div className="relative bg-white w-full max-w-md rounded-md shadow-2xl p-8 animate-in zoom-in duration-200">
             <div className="flex justify-between items-center mb-6">
@@ -287,8 +347,9 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                 Add New Laboratory
               </h3>
               <button
-                onClick={() => setShowAddLabModal(false)}
+                onClick={() => !isAddingLab && setShowAddLabModal(false)}
                 className="p-2 bg-slate-100 rounded-md hover:bg-slate-200 transition-all"
+                disabled={isAddingLab}
               >
                 <X size={18} />
               </button>
@@ -302,7 +363,8 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                   type="text"
                   value={newLabName}
                   onChange={(e) => setNewLabName(e.target.value)}
-                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={isAddingLab}
+                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="e.g., Lab 4"
                 />
               </div>
@@ -314,7 +376,8 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                   type="text"
                   value={newLabRoom}
                   onChange={(e) => setNewLabRoom(e.target.value)}
-                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={isAddingLab}
+                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   placeholder="e.g., CCS - Room 104"
                 />
               </div>
@@ -328,14 +391,23 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                   max="100"
                   value={newLabPCs}
                   onChange={(e) => setNewLabPCs(parseInt(e.target.value) || 1)}
-                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={isAddingLab}
+                  className="w-full border border-zinc-300 rounded-md px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
               <button
                 onClick={handleAddLab}
-                className="w-full py-3 bg-indigo-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md"
+                disabled={isAddingLab}
+                className="w-full py-3 bg-indigo-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Create Laboratory
+                {isAddingLab ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Laboratory"
+                )}
               </button>
             </div>
           </div>
@@ -373,9 +445,14 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                       {editMode && (
                         <button
                           onClick={handleAddPC}
-                          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-md"
+                          disabled={isAddingPC}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-all shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                          <Plus size={14} />
+                          {isAddingPC ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Plus size={14} />
+                          )}
                           Add PC
                         </button>
                       )}
@@ -396,14 +473,16 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                     <div
                       key={pc.id}
                       onClick={() => {
-                        setSelectedPCId(pc.id);
-                        setSidebarOpen(true);
+                        if (!isAddingPC && !isDeletingPC && !isSavingChanges) {
+                          setSelectedPCId(pc.id);
+                          setSidebarOpen(true);
+                        }
                       }}
                       className={`flex flex-col items-center gap-3 transition-all cursor-pointer ${
                         selectedPCId === pc.id
                           ? "scale-110"
                           : "hover:scale-105"
-                      }`}
+                      } ${(isAddingPC || isDeletingPC || isSavingChanges) ? "pointer-events-none opacity-50" : ""}`}
                     >
                       <div
                         className={`p-5 rounded-md shadow-sm relative transition-all border-2 ${
@@ -426,7 +505,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
                         {getPCName(pc.id)}
                       </span>
-                      {/* REMOVED: "Issue noted" badge */}
                     </div>
                   ))}
                 </div>
@@ -442,15 +520,23 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                 {editMode && (
                   <button
                     onClick={handleSaveChanges}
-                    className="px-10 py-4 bg-slate-900 text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all active:scale-95"
+                    disabled={isSavingChanges}
+                    className="px-10 py-4 bg-slate-900 text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 shadow-xl shadow-slate-200 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Save Infrastructure Changes
+                    {isSavingChanges ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Infrastructure Changes"
+                    )}
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Sidebar – different content based on edit permission */}
+            {/* Sidebar – unchanged */}
             {sidebarOpen && selectedPCId && currentSelectedPC && (
               <div className="w-96 border-l border-zinc-200 bg-slate-50/50 p-10 flex flex-col animate-in slide-in-from-right duration-500">
                 <div className="flex-1">
@@ -462,14 +548,10 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                   </p>
 
                   {isEditSidebar ? (
-                    // --- EDIT MODE UI (admin only) ---
                     <>
                       <div className="space-y-4">
-                        {/* Status: Available */}
                         <button
-                          onClick={() =>
-                            handleStatusChange(selectedPCId, "available")
-                          }
+                          onClick={() => handleStatusChange(selectedPCId, "available")}
                           className={`w-full flex items-center justify-between p-6 rounded-md border-2 transition-all ${
                             currentSelectedPC.status === "available"
                               ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100"
@@ -490,12 +572,8 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                             }`}
                           ></div>
                         </button>
-
-                        {/* Status: Issue Reported */}
                         <button
-                          onClick={() =>
-                            handleStatusChange(selectedPCId, "unavailable")
-                          }
+                          onClick={() => handleStatusChange(selectedPCId, "unavailable")}
                           className={`w-full flex items-center justify-between p-6 rounded-md border-2 transition-all ${
                             currentSelectedPC.status === "unavailable"
                               ? "bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-100"
@@ -518,7 +596,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                         </button>
                       </div>
 
-                      {/* Editable Issue Description (only when status is unavailable) */}
                       {currentSelectedPC.status === "unavailable" && (
                         <div className="mt-8 space-y-3">
                           <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">
@@ -549,7 +626,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                       )}
                     </>
                   ) : (
-                    // --- VIEW MODE UI (instructors or admin not in editMode) ---
                     <div className="space-y-6">
                       <div className="bg-white rounded-md border border-zinc-200 p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -570,18 +646,16 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                         </div>
 
                         {currentSelectedPC.status === "unavailable" && (
-                          <>
-                            <div className="border-t border-zinc-100 pt-4 mt-2">
-                              <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-2">
-                                Issue Description
-                              </span>
-                              <div className="bg-slate-50 p-4 rounded-md border border-zinc-200">
-                                <p className="text-sm font-medium text-slate-700">
-                                  {currentSelectedPC.referenceNote || "No description provided."}
-                                </p>
-                              </div>
+                          <div className="border-t border-zinc-100 pt-4 mt-2">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-2">
+                              Issue Description
+                            </span>
+                            <div className="bg-slate-50 p-4 rounded-md border border-zinc-200">
+                              <p className="text-sm font-medium text-slate-700">
+                                {currentSelectedPC.referenceNote || "No description provided."}
+                              </p>
                             </div>
-                          </>
+                          </div>
                         )}
 
                         {currentSelectedPC.status === "available" && (
@@ -595,7 +669,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                   )}
                 </div>
 
-                {/* Delete button only appears in edit mode (admin) */}
                 {isEditSidebar && (
                   <div className="pt-8 border-t border-slate-200 mt-auto">
                     <p className="text-[9px] font-black text-rose-400 uppercase mb-4 tracking-widest">
@@ -603,15 +676,19 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                     </p>
                     <button
                       onClick={() => handleDeletePC(selectedPCId)}
-                      className="w-full flex items-center justify-center gap-2 p-5 bg-rose-50 text-rose-600 rounded-md border border-rose-100 hover:bg-rose-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group"
+                      disabled={isDeletingPC === selectedPCId}
+                      className="w-full flex items-center justify-center gap-2 p-5 bg-rose-50 text-rose-600 rounded-md border border-rose-100 hover:bg-rose-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Trash2 size={16} className="group-hover:animate-bounce" />
+                      {isDeletingPC === selectedPCId ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} className="group-hover:animate-bounce" />
+                      )}
                       REMOVE PC
                     </button>
                   </div>
                 )}
 
-                {/* Close button for all modes */}
                 <button
                   onClick={() => setSidebarOpen(false)}
                   className="mt-6 w-full py-3 bg-slate-200 text-slate-700 rounded-md text-[10px] font-black uppercase tracking-wider hover:bg-slate-300 transition-all"
@@ -626,45 +703,5 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
     </div>
   );
 };
-
-// Initial Sample Data (with some example notes)
-const generateInitialPCs = (count: number, issueIndices: number[]): PC[] =>
-  Array.from({ length: count }, (_, i) => ({
-    id: i + 1,
-    status: issueIndices.includes(i + 1) ? "unavailable" : "available",
-    referenceNote: issueIndices.includes(i + 1)
-      ? "Sample issue – needs hardware check"
-      : undefined,
-  }));
-
-const initialLabs: Lab[] = [
-  {
-    id: 1,
-    name: "Lab 1",
-    room: "CCS - Room 101",
-    pcs: 30,
-    avail: 28,
-    issues: 2,
-    pcsData: generateInitialPCs(30, [1, 2]),
-  },
-  {
-    id: 2,
-    name: "Lab 2",
-    room: "CCS - Room 102",
-    pcs: 28,
-    avail: 24,
-    issues: 4,
-    pcsData: generateInitialPCs(28, [5, 10, 11, 12]),
-  },
-  {
-    id: 3,
-    name: "Lab 3",
-    room: "CCS - Room 103",
-    pcs: 20,
-    avail: 15,
-    issues: 5,
-    pcsData: generateInitialPCs(20, [1, 2, 3, 4, 5]),
-  },
-];
 
 export default Laboratories;
