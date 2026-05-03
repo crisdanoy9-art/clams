@@ -1,4 +1,3 @@
-// lib/validations/laboratorySchema.ts
 import { z } from "zod";
 
 export const LaboratorySchema = z.object({
@@ -13,9 +12,30 @@ export const LaboratorySchema = z.object({
 
 export type Laboratory = z.infer<typeof LaboratorySchema>;
 
-export const LaboratoryApi: Record<keyof Laboratory, "text" | "number"> = {
-  lab_name: "text",
-  room_number: "text",
-  building: "text",
-  total_stations: "number",
-};
+export const LaboratoryFields = [
+  {
+    name: "lab_name",
+    label: "Lab Name",
+    type: "text" as const,
+    placeholder: "e.g., Lab 4",
+  },
+  {
+    name: "room_number",
+    label: "Room Number",
+    type: "text" as const,
+    placeholder: "e.g., CCS - Room 104",
+  },
+  {
+    name: "building",
+    label: "Building",
+    type: "text" as const,
+    placeholder: "e.g., CCS Building",
+  },
+  {
+    name: "total_stations",
+    label: "Total PC",
+    type: "number" as const,
+    min: 1,
+    max: 999,
+  },
+];

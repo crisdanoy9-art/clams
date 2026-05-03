@@ -11,7 +11,13 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
+  LayoutGrid,
 } from "lucide-react";
+import { AddModal } from "../components/reusableModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { EquipmentFields } from "../lib/validations/equipment";
+import { useTableData } from "../lib/hooks/useTableData";
+import { CategoryField } from "../lib/validations/categories";
 
 interface Asset {
   id: string;
@@ -26,6 +32,26 @@ const Equipment: React.FC = () => {
   const [selectedLab, setSelectedLab] = useState<string | null>(null);
   const [expandedLab, setExpandedLab] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+  const [showModal, setModal] = useState(false);
+  type section = "asset" | "category";
+  const [whichSec, setWhichSec] = useState<section | null>(null);
+  const queryClient = useQueryClient();
+  const { data: labData } = useTableData("laboratories");
+  const { data: categoryData } = useTableData("categories");
+
+  // dynamic lab option name
+  const labOptions =
+    labData?.map((lab: any) => ({
+      value: String(lab.lab_id),
+      label: lab.lab_name,
+    })) ?? [];
+
+  // dynamic category
+  const categoryOptions =
+    categoryData?.map((cat: any) => ({
+      value: String(cat.category_id),
+      label: cat.category_name,
+    })) ?? [];
 
   // Start with an empty inventory – no example data
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -85,7 +111,7 @@ const Equipment: React.FC = () => {
   const availableCount = assets.filter((a) => a.status === "Available").length;
   const inUseCount = assets.filter((a) => a.status === "In Use").length;
   const maintenanceCount = assets.filter(
-    (a) => a.status === "Maintenance"
+    (a) => a.status === "Maintenance",
   ).length;
 
   // Per-lab statistics (empty when no assets)
@@ -116,7 +142,7 @@ const Equipment: React.FC = () => {
         maintenance: number;
         assets: Asset[];
       }
-    >
+    >,
   );
 
   // Filter assets by selected lab (for main table)
@@ -152,12 +178,29 @@ const Equipment: React.FC = () => {
             CLAMS / Admin / Inventory Management
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-md hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-sm"
-        >
-          <Plus size={18} /> Add New Asset
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Category Button - Use a different color or outline for hierarchy */}
+          <button
+            onClick={() => /* your category modal logic */ {
+              setWhichSec("category");
+              setModal(true);
+            }}
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-md hover:bg-slate-50 transition-all font-bold text-[11px] uppercase tracking-wider shadow-sm"
+          >
+            <LayoutGrid size={16} /> Add Category
+          </button>
+
+          {/* Primary Asset Button */}
+          <button
+            onClick={() => {
+              setWhichSec("asset");
+              setModal(true);
+            }}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-md hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-[11px] uppercase tracking-wider"
+          >
+            <Plus size={18} /> Add New Asset
+          </button>
+        </div>
       </div>
 
       {/* Dashboard Stats */}
@@ -530,6 +573,22 @@ const Equipment: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {showModal && (
+        <AddModal
+          fields={
+            whichSec === "category"
+              ? CategoryField
+              : EquipmentFields(labOptions, categoryOptions)
+          }
+          table={whichSec === "asset" ? "equipment" : "categories"}
+          onClose={() => setModal(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["laboratories"] });
+            setModal(false);
+          }}
+        />
       )}
     </div>
   );

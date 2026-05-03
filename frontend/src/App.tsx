@@ -12,10 +12,16 @@ import Login from "./pages/Login";
 import { Navbar } from "./components/navBar";
 
 const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentView, setCurrentView] = useState("dashboard");
   const [userRole, setUserRole] = useState<"admin" | "instructor">("admin");
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentView, setCurrentView] = useState(
+    () => localStorage.getItem("currentView") || "dashboard",
+  );
+  const handleSetView = (view: string) => {
+    localStorage.setItem("currentView", view);
+    setCurrentView(view);
+  };
 
   const handleLogin = (role: "admin" | "instructor") => {
     setUserRole(role);
@@ -76,7 +82,7 @@ const App: React.FC = () => {
       <div className="flex">
         <div className="sticky top-0 h-screen">
           <Sidebar
-            onSelect={setCurrentView}
+            onSelect={handleSetView}
             activeView={currentView}
             userRole={userRole}
             expanded={sidebarExpanded}

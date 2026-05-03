@@ -7,38 +7,16 @@ import {
   X,
   Check,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { AddModal } from "../components/reusableModal";
+import { PeripheralFields } from "../lib/validations/peripherals";
 
 const Peripherals: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showModal, setModal] = useState(false);
+  const queryClient = useQueryClient();
+
   // Start with an empty array – no example peripherals
   const [peripherals, setPeripherals] = useState<any[]>([]);
-
-  const [newItem, setNewItem] = useState({
-    name: "",
-    lab: "Lab 1",
-    category: "",
-    working: 0,
-  });
-
-  const handleAdd = () => {
-    if (newItem.name && newItem.category && newItem.working > 0) {
-      setPeripherals([
-        ...peripherals,
-        {
-          id: Date.now(),
-          name: newItem.name,
-          lab: newItem.lab,
-          category: newItem.category,
-          working: newItem.working,
-          damaged: 0,
-        },
-      ]);
-      setIsModalOpen(false);
-      setNewItem({ name: "", lab: "Lab 1", category: "", working: 0 });
-    } else {
-      alert("Please fill all fields and set a valid stock count.");
-    }
-  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
@@ -52,7 +30,7 @@ const Peripherals: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setModal(true)}
           className="bg-indigo-600 text-white px-8 py-4 rounded-md font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
         >
           <Plus size={18} /> Add New Item
@@ -60,67 +38,70 @@ const Peripherals: React.FC = () => {
       </div>
 
       {/* Modal Overlay */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-none h-full">
-          <div className="bg-white w-full max-w-md rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]">
-            <div className="bg-indigo-600 p-8 text-white flex justify-between items-center">
-              <h3 className="font-black uppercase tracking-tighter text-xl">
-                Add Peripheral
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="hover:rotate-90 transition-transform"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="p-8 space-y-4">
-              <input
-                type="text"
-                placeholder="Item Name"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all"
-                onChange={(e) =>
-                  setNewItem({ ...newItem, name: e.target.value })
-                }
-              />
-              <select
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all"
-                onChange={(e) =>
-                  setNewItem({ ...newItem, lab: e.target.value })
-                }
-              >
-                <option>Lab 1</option>
-                <option>Lab 2</option>
-                <option>Lab 3</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Category (e.g. Audio)"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all"
-                onChange={(e) =>
-                  setNewItem({ ...newItem, category: e.target.value })
-                }
-              />
-              <input
-                type="number"
-                placeholder="Working Units (Stock)"
-                min="1"
-                className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all"
-                value={newItem.working || ""}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, working: parseInt(e.target.value) || 0 })
-                }
-              />
-              <button
-                onClick={handleAdd}
-                className="w-full bg-indigo-600 text-white py-4 rounded-md font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all"
-              >
-                Confirm Entry
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* {showModal && ( */}
+      {/*   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-none h-full"> */}
+      {/*     <div className="bg-white w-full max-w-md rounded-md shadow-2xl border border-slate-200 overflow-hidden animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]"> */}
+      {/*       <div className="bg-indigo-600 p-8 text-white flex justify-between items-center"> */}
+      {/*         <h3 className="font-black uppercase tracking-tighter text-xl"> */}
+      {/*           Add Peripheral */}
+      {/*         </h3> */}
+      {/*         <button */}
+      {/*           onClick={() => setModal(false)} */}
+      {/*           className="hover:rotate-90 transition-transform" */}
+      {/*         > */}
+      {/*           <X size={24} /> */}
+      {/*         </button> */}
+      {/*       </div> */}
+      {/*       <div className="p-8 space-y-4"> */}
+      {/*         <input */}
+      {/*           type="text" */}
+      {/*           placeholder="Item Name" */}
+      {/*           className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all" */}
+      {/*           onChange={(e) => */}
+      {/*             setNewItem({ ...newItem, name: e.target.value }) */}
+      {/*           } */}
+      {/*         /> */}
+      {/*         <select */}
+      {/*           className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all" */}
+      {/*           onChange={(e) => */}
+      {/*             setNewItem({ ...newItem, lab: e.target.value }) */}
+      {/*           } */}
+      {/*         > */}
+      {/*           <option>Lab 1</option> */}
+      {/*           <option>Lab 2</option> */}
+      {/*           <option>Lab 3</option> */}
+      {/*         </select> */}
+      {/*         <input */}
+      {/*           type="text" */}
+      {/*           placeholder="Category (e.g. Audio)" */}
+      {/*           className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all" */}
+      {/*           onChange={(e) => */}
+      {/*             setNewItem({ ...newItem, category: e.target.value }) */}
+      {/*           } */}
+      {/*         /> */}
+      {/*         <input */}
+      {/*           type="number" */}
+      {/*           placeholder="Working Units (Stock)" */}
+      {/*           min="1" */}
+      {/*           className="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-md text-sm font-bold outline-none focus:border-indigo-600 transition-all" */}
+      {/*           value={newItem.working || ""} */}
+      {/*           onChange={(e) => */}
+      {/*             setNewItem({ */}
+      {/*               ...newItem, */}
+      {/*               working: parseInt(e.target.value) || 0, */}
+      {/*             }) */}
+      {/*           } */}
+      {/*         /> */}
+      {/*         <button */}
+      {/*           onClick={handleAdd} */}
+      {/*           className="w-full bg-indigo-600 text-white py-4 rounded-md font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all" */}
+      {/*         > */}
+      {/*           Confirm Entry */}
+      {/*         </button> */}
+      {/*       </div> */}
+      {/*     </div> */}
+      {/*   </div> */}
+      {/* )} */}
 
       {/* Table Section with empty state */}
       <div className="bg-white rounded-md border border-slate-200 overflow-hidden shadow-sm">
@@ -164,7 +145,10 @@ const Peripherals: React.FC = () => {
             ))}
             {peripherals.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-8 py-12 text-center text-slate-400">
+                <td
+                  colSpan={4}
+                  className="px-8 py-12 text-center text-slate-400"
+                >
                   No peripherals added yet. Click "Add New Item" to get started.
                 </td>
               </tr>
@@ -172,6 +156,17 @@ const Peripherals: React.FC = () => {
           </tbody>
         </table>
       </div>
+      {showModal && (
+        <AddModal
+          fields={PeripheralFields}
+          table="laboratories"
+          onClose={() => setModal(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["laboratories"] });
+            setModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

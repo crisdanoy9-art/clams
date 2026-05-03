@@ -13,6 +13,9 @@ import {
   Computer,
   AlertCircle,
 } from "lucide-react";
+import { AddModal } from "../components/reusableModal";
+import { ReportFields } from "../lib/validations/reports";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DamageReport {
   id: string;
@@ -26,10 +29,11 @@ interface DamageReport {
 type DateFilter = "weekly" | "monthly" | "yearly";
 
 const DamageReports: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showModal, setModal] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("monthly");
   const [reports, setReports] = useState<DamageReport[]>([]);
   const [formData, setFormData] = useState({ item: "", description: "" });
+  const queryClient = useQueryClient();
 
   // Get filtered reports based on date filter
   const getFilteredReports = useMemo(() => {
@@ -61,7 +65,7 @@ const DamageReports: React.FC = () => {
   // Sort filtered reports by date (newest first)
   const sortedFilteredReports = useMemo(() => {
     return [...getFilteredReports].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }, [getFilteredReports]);
 
@@ -75,7 +79,7 @@ const DamageReports: React.FC = () => {
     const damagedItems = new Set(
       getFilteredReports
         .filter((r) => r.status !== "Resolved")
-        .map((r) => r.item)
+        .map((r) => r.item),
     );
     const damagedPCs = damagedItems.size;
 
@@ -101,7 +105,7 @@ const DamageReports: React.FC = () => {
       status: "Pending",
     };
     setReports([newReport, ...reports]);
-    setIsModalOpen(false);
+    setModal(false);
     setFormData({ item: "", description: "" });
   };
 
@@ -151,7 +155,7 @@ const DamageReports: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setModal(true)}
           className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
         >
           <Plus size={16} /> New Report
@@ -167,9 +171,15 @@ const DamageReports: React.FC = () => {
               onChange={(e) => setDateFilter(e.target.value as DateFilter)}
               className="appearance-none bg-white border border-slate-200 rounded-md pl-4 pr-10 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
             >
-              <option value="weekly">Weekly ({getCountForPeriod("weekly")})</option>
-              <option value="monthly">Monthly ({getCountForPeriod("monthly")})</option>
-              <option value="yearly">Yearly ({getCountForPeriod("yearly")})</option>
+              <option value="weekly">
+                Weekly ({getCountForPeriod("weekly")})
+              </option>
+              <option value="monthly">
+                Monthly ({getCountForPeriod("monthly")})
+              </option>
+              <option value="yearly">
+                Yearly ({getCountForPeriod("yearly")})
+              </option>
             </select>
             <ChevronDown
               size={14}
@@ -237,7 +247,7 @@ const DamageReports: React.FC = () => {
                 No reports found for {getFilterLabel().toLowerCase()}
               </p>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setModal(true)}
                 className="mt-4 text-indigo-600 text-[9px] font-black uppercase tracking-widest hover:underline"
               >
                 + Create a new report
@@ -255,8 +265,8 @@ const DamageReports: React.FC = () => {
                       report.status === "Pending"
                         ? "bg-rose-50 text-rose-500"
                         : report.status === "Under Repair"
-                        ? "bg-amber-50 text-amber-500"
-                        : "bg-emerald-50 text-emerald-500"
+                          ? "bg-amber-50 text-amber-500"
+                          : "bg-emerald-50 text-emerald-500"
                     }`}
                   >
                     {report.status === "Pending" ? (
@@ -291,8 +301,8 @@ const DamageReports: React.FC = () => {
                       report.status === "Pending"
                         ? "border-rose-100 bg-rose-50 text-rose-500"
                         : report.status === "Under Repair"
-                        ? "border-amber-100 bg-amber-50 text-amber-500"
-                        : "border-emerald-100 bg-emerald-50 text-emerald-600"
+                          ? "border-amber-100 bg-amber-50 text-amber-500"
+                          : "border-emerald-100 bg-emerald-50 text-emerald-600"
                     }`}
                   >
                     {report.status}
@@ -305,73 +315,84 @@ const DamageReports: React.FC = () => {
       </div>
 
       {/* Report Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setIsModalOpen(false)}
-          ></div>
-          <div className="relative bg-white w-full max-w-lg rounded-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-rose-500 rounded-md flex items-center justify-center text-white shadow-xl shadow-rose-200">
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    Report Incident
-                  </h3>
-                  <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                    Damage Details
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-white rounded-md transition-colors text-slate-300 hover:text-slate-900"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="p-10 space-y-8">
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  <Monitor size={12} /> Target PC / Peripheral
-                </label>
-                <input
-                  required
-                  value={formData.item}
-                  onChange={(e) =>
-                    setFormData({ ...formData, item: e.target.value })
-                  }
-                  className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none"
-                  placeholder="e.g. PC-12 or Mouse Lab 1"
-                />
-              </div>
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                  <MessageSquare size={12} /> Describe the Issue
-                </label>
-                <textarea
-                  required
-                  rows={4}
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none resize-none"
-                  placeholder="What is wrong with the equipment?"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-5 bg-slate-900 text-white rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10"
-              >
-                Send to Raylle Admin
-              </button>
-            </form>
-          </div>
-        </div>
+      {/* {showModal && ( */}
+      {/*   <div className="fixed inset-0 z-[100] flex items-center justify-center p-6"> */}
+      {/*     <div */}
+      {/*       className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" */}
+      {/*       onClick={() => setModal(false)} */}
+      {/*     ></div> */}
+      {/*     <div className="relative bg-white w-full max-w-lg rounded-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"> */}
+      {/*       <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50"> */}
+      {/*         <div className="flex items-center gap-4"> */}
+      {/*           <div className="w-12 h-12 bg-rose-500 rounded-md flex items-center justify-center text-white shadow-xl shadow-rose-200"> */}
+      {/*             <AlertTriangle size={20} /> */}
+      {/*           </div> */}
+      {/*           <div> */}
+      {/*             <h3 className="text-xl font-black text-slate-900 tracking-tight"> */}
+      {/*               Report Incident */}
+      {/*             </h3> */}
+      {/*             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest"> */}
+      {/*               Damage Details */}
+      {/*             </p> */}
+      {/*           </div> */}
+      {/*         </div> */}
+      {/*         <button */}
+      {/*           onClick={() => setModal(false)} */}
+      {/*           className="p-2 hover:bg-white rounded-md transition-colors text-slate-300 hover:text-slate-900" */}
+      {/*         > */}
+      {/*           <X size={20} /> */}
+      {/*         </button> */}
+      {/*       </div> */}
+      {/*       <form onSubmit={handleSubmit} className="p-10 space-y-8"> */}
+      {/*         <div className="space-y-3"> */}
+      {/*           <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"> */}
+      {/*             <Monitor size={12} /> Target PC / Peripheral */}
+      {/*           </label> */}
+      {/*           <input */}
+      {/*             required */}
+      {/*             value={formData.item} */}
+      {/*             onChange={(e) => */}
+      {/*               setFormData({ ...formData, item: e.target.value }) */}
+      {/*             } */}
+      {/*             className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none" */}
+      {/*             placeholder="e.g. PC-12 or Mouse Lab 1" */}
+      {/*           /> */}
+      {/*         </div> */}
+      {/*         <div className="space-y-3"> */}
+      {/*           <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"> */}
+      {/*             <MessageSquare size={12} /> Describe the Issue */}
+      {/*           </label> */}
+      {/*           <textarea */}
+      {/*             required */}
+      {/*             rows={4} */}
+      {/*             value={formData.description} */}
+      {/*             onChange={(e) => */}
+      {/*               setFormData({ ...formData, description: e.target.value }) */}
+      {/*             } */}
+      {/*             className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none resize-none" */}
+      {/*             placeholder="What is wrong with the equipment?" */}
+      {/*           /> */}
+      {/*         </div> */}
+      {/*         <button */}
+      {/*           type="submit" */}
+      {/*           className="w-full py-5 bg-slate-900 text-white rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10" */}
+      {/*         > */}
+      {/*           Send to Raylle Admin */}
+      {/*         </button> */}
+      {/*       </form> */}
+      {/*     </div> */}
+      {/*   </div> */}
+      {/* )} */}
+
+      {showModal && (
+        <AddModal
+          fields={ReportFields}
+          table="users"
+          onClose={() => setModal(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["users"] });
+          }}
+        />
       )}
     </div>
   );
