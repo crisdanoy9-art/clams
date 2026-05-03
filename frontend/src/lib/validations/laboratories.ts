@@ -31,11 +31,4 @@ export const LaboratoryFields = [
     type: "text" as const,
     placeholder: "e.g., CCS Building",
   },
-  {
-    name: "total_stations",
-    label: "Total PC",
-    type: "number" as const,
-    min: 1,
-    max: 999,
-  },
 ];

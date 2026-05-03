@@ -19,152 +19,88 @@ import { EquipmentFields } from "../lib/validations/equipment";
 import { useTableData } from "../lib/hooks/useTableData";
 import { CategoryField } from "../lib/validations/categories";
 
-interface Asset {
-  id: string;
-  name: string;
-  model: string;
-  lab: string;
-  status: "Available" | "In Use" | "Maintenance";
-}
-
 const Equipment: React.FC = () => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedLab, setSelectedLab] = useState<string | null>(null);
-  const [expandedLab, setExpandedLab] = useState<string | null>(null);
+  const [selectedLabId, setSelectedLabId] = useState<number | null>(null);
+  const [expandedLabId, setExpandedLabId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
   const [showModal, setModal] = useState(false);
   type section = "asset" | "category";
   const [whichSec, setWhichSec] = useState<section | null>(null);
+
   const queryClient = useQueryClient();
   const { data: labData } = useTableData("laboratories");
   const { data: categoryData } = useTableData("categories");
+  const { data: equipmentData } = useTableData("equipment");
 
-  // dynamic lab option name
+  // 1. Filter out deleted items and prepare data
+  const activeEquipment =
+    equipmentData?.filter((e: any) => !e.is_deleted) ?? [];
+
+  // 2. Dynamic Options for Modals
   const labOptions =
     labData?.map((lab: any) => ({
       value: String(lab.lab_id),
       label: lab.lab_name,
     })) ?? [];
 
-  // dynamic category
   const categoryOptions =
     categoryData?.map((cat: any) => ({
       value: String(cat.category_id),
       label: cat.category_name,
     })) ?? [];
 
-  // Start with an empty inventory – no example data
-  const [assets, setAssets] = useState<Asset[]>([]);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    model: "",
-    lab: "Laboratory 1",
-    status: "Available" as Asset["status"],
-    stock: 1,
-  });
-
-  // Helper: Generate sequential asset IDs (works even when assets list is empty)
-  const getNextIdNumbers = (count: number): string[] => {
-    const idNumbers = assets.map((asset) => {
-      const match = asset.id.match(/ASSET-(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
-    const maxId = idNumbers.length ? Math.max(...idNumbers) : 0;
-    const newIds: string[] = [];
-    for (let i = 1; i <= count; i++) {
-      const nextNum = maxId + i;
-      newIds.push(`ASSET-${nextNum.toString().padStart(3, "0")}`);
-    }
-    return newIds;
-  };
-
-  const handleAddAsset = (e: React.FormEvent) => {
-    e.preventDefault();
-    const { name, model, lab, status, stock } = formData;
-    if (!name.trim() || !model.trim()) return;
-
-    const stockQty = Math.max(1, Math.floor(stock) || 1);
-    const newIds = getNextIdNumbers(stockQty);
-
-    const newAssets: Asset[] = newIds.map((id) => ({
-      id,
-      name: name.trim(),
-      model: model.trim(),
-      lab,
-      status,
-    }));
-
-    setAssets([...newAssets, ...assets]);
-    setShowAddModal(false);
-    setFormData({
-      name: "",
-      model: "",
-      lab: "Laboratory 1",
-      status: "Available",
-      stock: 1,
-    });
-  };
-
-  // Dashboard totals (all zero when inventory is empty)
-  const totalItems = assets.length;
-  const availableCount = assets.filter((a) => a.status === "Available").length;
-  const inUseCount = assets.filter((a) => a.status === "In Use").length;
-  const maintenanceCount = assets.filter(
-    (a) => a.status === "Maintenance",
+  // 3. Dashboard Totals (matching DB status strings)
+  const totalItems = activeEquipment.length;
+  const availableCount = activeEquipment.filter(
+    (a: any) => a.status === "available",
+  ).length;
+  const inUseCount = activeEquipment.filter(
+    (a: any) => a.status === "in_use",
+  ).length;
+  const maintenanceCount = activeEquipment.filter(
+    (a: any) => a.status === "unavailable",
   ).length;
 
-  // Per-lab statistics (empty when no assets)
-  const labStats = assets.reduce(
-    (acc, asset) => {
-      if (!acc[asset.lab]) {
-        acc[asset.lab] = {
-          total: 0,
-          available: 0,
-          inUse: 0,
-          maintenance: 0,
-          assets: [] as Asset[],
-        };
-      }
-      acc[asset.lab].total++;
-      if (asset.status === "Available") acc[asset.lab].available++;
-      if (asset.status === "In Use") acc[asset.lab].inUse++;
-      if (asset.status === "Maintenance") acc[asset.lab].maintenance++;
-      acc[asset.lab].assets.push(asset);
-      return acc;
-    },
-    {} as Record<
-      string,
-      {
-        total: number;
-        available: number;
-        inUse: number;
-        maintenance: number;
-        assets: Asset[];
-      }
-    >,
-  );
+  // 4. Per-lab Statistics Mapping
+  const labStats =
+    labData?.map((lab: any) => {
+      const assetsInLab = activeEquipment.filter(
+        (e: any) => e.lab_id === lab.lab_id,
+      );
+      return {
+        ...lab,
+        total: assetsInLab.length,
+        available: assetsInLab.filter((e: any) => e.status === "available")
+          .length,
+        inUse: assetsInLab.filter((e: any) => e.status === "in_use").length,
+        maintenance: assetsInLab.filter((e: any) => e.status === "unavailable")
+          .length,
+        assets: assetsInLab,
+      };
+    }) ?? [];
 
-  // Filter assets by selected lab (for main table)
-  const filteredAssets = selectedLab
-    ? assets.filter((asset) => asset.lab === selectedLab)
-    : assets;
+  // 5. Table Filtering Logic
+  const filteredAssets = activeEquipment.filter((asset: any) => {
+    const matchesLab = selectedLabId ? asset.lab_id === selectedLabId : true;
+    const matchesSearch =
+      asset.asset_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.item_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      asset.model?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesLab && matchesSearch;
+  });
 
   const scrollToTable = () => {
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleLabClick = (lab: string) => {
-    setSelectedLab(lab);
+  const handleLabClick = (id: number) => {
+    setSelectedLabId(id);
     setTimeout(scrollToTable, 100);
   };
 
-  const clearFilter = () => {
-    setSelectedLab(null);
-  };
-
-  const toggleExpand = (lab: string) => {
-    setExpandedLab(expandedLab === lab ? null : lab);
+  const toggleExpand = (id: number) => {
+    setExpandedLabId(expandedLabId === id ? null : id);
   };
 
   return (
@@ -179,9 +115,8 @@ const Equipment: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Category Button - Use a different color or outline for hierarchy */}
           <button
-            onClick={() => /* your category modal logic */ {
+            onClick={() => {
               setWhichSec("category");
               setModal(true);
             }}
@@ -190,7 +125,6 @@ const Equipment: React.FC = () => {
             <LayoutGrid size={16} /> Add Category
           </button>
 
-          {/* Primary Asset Button */}
           <button
             onClick={() => {
               setWhichSec("asset");
@@ -206,11 +140,8 @@ const Equipment: React.FC = () => {
       {/* Dashboard Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div
-          onClick={() => {
-            if (selectedLab) clearFilter();
-            scrollToTable();
-          }}
-          className="bg-white p-4 rounded-md border border-slate-200 shadow-sm cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all"
+          onClick={() => setSelectedLabId(null)}
+          className="bg-white p-4 rounded-md border border-slate-200 shadow-sm cursor-pointer hover:border-indigo-200 transition-all"
         >
           <div className="flex items-center gap-2 text-slate-400 mb-1">
             <Package size={16} />
@@ -250,32 +181,32 @@ const Equipment: React.FC = () => {
           <MapPin size={16} className="text-indigo-500" /> Laboratories Summary
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Object.entries(labStats).map(([lab, stats]) => (
+          {labStats.map((lab: any) => (
             <div
-              key={lab}
+              key={lab.lab_id}
               className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden transition-all"
             >
               <div
-                className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between"
-                onClick={() => toggleExpand(lab)}
+                className="p-4 cursor-pointer hover:bg-slate-50 flex items-center justify-between"
+                onClick={() => toggleExpand(lab.lab_id)}
               >
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-sm">
-                    {lab.charAt(0)}
+                    {lab.lab_name.charAt(0)}
                   </div>
-                  <h4 className="font-bold text-slate-700">{lab}</h4>
+                  <h4 className="font-bold text-slate-700">{lab.lab_name}</h4>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleLabClick(lab);
+                      handleLabClick(lab.lab_id);
                     }}
-                    className="text-xs font-bold bg-indigo-100 hover:bg-indigo-200 px-2 py-1 rounded-full text-indigo-700 transition-colors"
+                    className="text-xs font-bold bg-indigo-100 hover:bg-indigo-200 px-2 py-1 rounded-full text-indigo-700"
                   >
-                    {stats.total} total
+                    {lab.total} total
                   </button>
-                  {expandedLab === lab ? (
+                  {expandedLabId === lab.lab_id ? (
                     <ChevronUp size={18} className="text-slate-400" />
                   ) : (
                     <ChevronDown size={18} className="text-slate-400" />
@@ -285,63 +216,51 @@ const Equipment: React.FC = () => {
 
               <div className="px-4 pb-3 grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="bg-emerald-50 rounded-md p-2">
-                  <p className="text-emerald-600 font-bold">
-                    {stats.available}
-                  </p>
+                  <p className="text-emerald-600 font-bold">{lab.available}</p>
                   <p className="text-[10px] text-slate-500">Available</p>
                 </div>
                 <div className="bg-blue-50 rounded-md p-2">
-                  <p className="text-blue-600 font-bold">{stats.inUse}</p>
+                  <p className="text-blue-600 font-bold">{lab.inUse}</p>
                   <p className="text-[10px] text-slate-500">In Use</p>
                 </div>
                 <div className="bg-rose-50 rounded-md p-2">
-                  <p className="text-rose-600 font-bold">{stats.maintenance}</p>
+                  <p className="text-rose-600 font-bold">{lab.maintenance}</p>
                   <p className="text-[10px] text-slate-500">Maint.</p>
                 </div>
               </div>
 
-              {expandedLab === lab && (
-                <div className="border-t border-zinc-200 bg-slate-50/50 p-3">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">
-                    Assets in this lab
-                  </p>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {stats.assets.map((asset) => (
-                      <div
-                        key={asset.id}
-                        className="bg-white rounded-md p-2 flex items-center justify-between shadow-sm border border-zinc-200"
-                      >
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700">
-                            {asset.name} {asset.model}
-                          </p>
-                          <p className="text-[10px] text-slate-500">
-                            {asset.id}
-                          </p>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                            asset.status === "Available"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : asset.status === "In Use"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-rose-100 text-rose-700"
-                          }`}
-                        >
-                          {asset.status}
-                        </span>
+              {expandedLabId === lab.lab_id && (
+                <div className="border-t border-zinc-200 bg-slate-50/50 p-3 space-y-2 max-h-64 overflow-y-auto">
+                  {lab.assets.map((asset: any) => (
+                    <div
+                      key={asset.equipment_id}
+                      className="bg-white rounded-md p-2 flex items-center justify-between shadow-sm border border-zinc-200"
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700">
+                          {asset.item_name} {asset.model}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {asset.asset_tag}
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                          asset.status === "available"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : asset.status === "in_use"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {asset.status.replace("_", " ")}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           ))}
-          {Object.keys(labStats).length === 0 && (
-            <div className="col-span-full text-center py-8 bg-slate-50 rounded-md text-slate-400">
-              No laboratories found. Add assets to create laboratory listings.
-            </div>
-          )}
         </div>
       </div>
 
@@ -358,17 +277,19 @@ const Equipment: React.FC = () => {
             />
             <input
               type="text"
-              placeholder="Search by ID, name, model, or laboratory..."
+              placeholder="Search by Asset Tag, Name, or Model..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
             />
           </div>
           <div className="flex gap-2">
-            {selectedLab && (
+            {selectedLabId && (
               <button
-                onClick={clearFilter}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md text-sm font-semibold hover:bg-indigo-100 transition-all"
+                onClick={() => setSelectedLabId(null)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md text-sm font-semibold"
               >
-                <X size={18} /> Clear filter: {selectedLab}
+                <X size={18} /> Clear Lab Filter
               </button>
             )}
             <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-md text-sm text-slate-600 hover:bg-slate-50 font-semibold">
@@ -377,203 +298,57 @@ const Equipment: React.FC = () => {
           </div>
         </div>
 
-        {selectedLab && (
-          <div className="px-6 py-2 bg-indigo-50/50 border-b border-indigo-100 text-xs text-indigo-700 flex items-center gap-2">
-            <MapPin size={14} /> Showing assets from{" "}
-            <span className="font-bold">{selectedLab}</span>
-          </div>
-        )}
-
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b border-zinc-200">
               <tr>
-                <th className="px-6 py-4">Asset ID</th>
-                <th className="px-6 py-4">Asset Name</th>
+                <th className="px-6 py-4">Asset Tag</th>
+                <th className="px-6 py-4">Item Name</th>
                 <th className="px-6 py-4">Model</th>
                 <th className="px-6 py-4">Laboratory</th>
                 <th className="px-6 py-4 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredAssets.map((item) => (
+              {filteredAssets.map((item: any) => (
                 <tr
-                  key={item.id}
+                  key={item.equipment_id}
                   className="hover:bg-slate-50/80 transition-colors group"
                 >
                   <td className="px-6 py-4 text-sm font-bold text-indigo-600">
-                    {item.id}
+                    {item.asset_tag}
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-slate-700">
-                    {item.name}
+                    {item.item_name}
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-slate-600">
                     {item.model}
                   </td>
                   <td className="px-6 py-4 text-xs text-slate-500 font-medium">
-                    {item.lab}
+                    {labData?.find((l: any) => l.lab_id === item.lab_id)
+                      ?.lab_name || "N/A"}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center">
                       <span
                         className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                          item.status === "Available"
+                          item.status === "available"
                             ? "bg-emerald-50 text-emerald-600"
-                            : item.status === "In Use"
+                            : item.status === "in_use"
                               ? "bg-blue-50 text-blue-600"
                               : "bg-rose-50 text-rose-600"
                         }`}
                       >
-                        {item.status}
+                        {item.status.replace("_", " ")}
                       </span>
                     </div>
                   </td>
                 </tr>
               ))}
-              {filteredAssets.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-6 py-12 text-center text-slate-400"
-                  >
-                    No assets found. Click "Add New Asset" to get started.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Add Asset Modal remains unchanged */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-none">
-          <div className="bg-white w-full max-w-lg rounded-md shadow-2xl animate-in zoom-in duration-200 overflow-hidden">
-            <div className="p-6 border-b border-zinc-200 flex justify-between items-center bg-indigo-600">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Plus size={20} /> Register New Asset(s)
-              </h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="text-white/80 hover:text-white"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddAsset} className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                    Asset Name
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-                    placeholder="e.g. Dell, Logitech, HP"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                    Model
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-                    placeholder="e.g. Optiplex 7080, G-Pro Mouse"
-                    value={formData.model}
-                    onChange={(e) =>
-                      setFormData({ ...formData, model: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                    Assign to Laboratory
-                  </label>
-                  <select
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm appearance-none"
-                    value={formData.lab}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lab: e.target.value })
-                    }
-                  >
-                    <option value="Laboratory 1">Laboratory 1</option>
-                    <option value="Laboratory 2">Laboratory 2</option>
-                    <option value="Laboratory 3">Laboratory 3</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                    Initial Status
-                  </label>
-                  <select
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm appearance-none"
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        status: e.target.value as Asset["status"],
-                      })
-                    }
-                  >
-                    <option value="Available">Available</option>
-                    <option value="In Use">In Use</option>
-                    <option value="Maintenance">Maintenance</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                  Stock Quantity
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-                  value={formData.stock}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      stock: parseInt(e.target.value) || 1,
-                    })
-                  }
-                />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Creates this many identical assets with the selected status.
-                </p>
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-3 border border-slate-200 text-slate-600 rounded-md text-sm font-bold hover:bg-slate-50 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-md text-sm font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={18} /> Save Asset(s)
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {showModal && (
         <AddModal
@@ -585,7 +360,7 @@ const Equipment: React.FC = () => {
           table={whichSec === "asset" ? "equipment" : "categories"}
           onClose={() => setModal(false)}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["laboratories"] });
+            queryClient.invalidateQueries({ queryKey: ["equipment"] });
             setModal(false);
           }}
         />
