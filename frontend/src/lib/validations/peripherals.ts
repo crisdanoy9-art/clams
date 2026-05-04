@@ -10,8 +10,10 @@ export const PeripheralSchema = z.object({
 
 export type Peripheral = z.infer<typeof PeripheralSchema>;
 
-// FIXED: Added missing 'total_count' and simplified the structure to match your form generator
-export const PeripheralFields = [
+// Converted to a function that accepts dynamic lab options
+export const PeripheralFields = (
+  labOptions: { value: string; label: string }[] = []
+) => [
   {
     name: "item_name",
     label: "Item Name",
@@ -29,11 +31,7 @@ export const PeripheralFields = [
     label: "Laboratory",
     type: "select" as const,
     placeholder: "Select laboratory",
-    options: [
-      { value: "Lab 1", label: "Laboratory 1" },
-      { value: "Lab 2", label: "Laboratory 2" },
-      { value: "Lab 3", label: "Laboratory 3" },
-    ],
+    options: labOptions, // Injected dynamically here
   },
   {
     name: "working_count",
@@ -41,4 +39,5 @@ export const PeripheralFields = [
     type: "number" as const,
     placeholder: "0",
   },
+
 ];

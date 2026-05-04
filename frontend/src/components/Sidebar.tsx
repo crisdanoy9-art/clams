@@ -1,3 +1,4 @@
+// Sidebar.tsx
 import React from "react";
 import {
   LayoutDashboard,
@@ -10,6 +11,7 @@ import {
   History,
   LogOut,
   FileBarChart,
+  Settings, // <-- added
 } from "lucide-react";
 
 interface SidebarProps {
@@ -115,6 +117,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       icon: <History size={20} />,
       roles: ["admin"],
     },
+    // NEW: Settings item
+    {
+      id: "settings",
+      label: "Settings",
+      icon: <Settings size={20} />,
+      roles: ["admin", "instructor"],
+    },
   ];
 
   const filteredNavItems = navItems.filter((item) =>
@@ -146,7 +155,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
 
-          {/* Text - just hide/show with opacity, no width changes */}
           <div
             className={`flex flex-col transition-opacity duration-300 ${expanded ? "opacity-100 delay-75" : "opacity-0 hidden"}`}
           >

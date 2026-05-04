@@ -38,30 +38,33 @@ const Users: React.FC = () => {
   };
 
   const { data: users, isLoading, isError } = useTableData("users");
+
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex justify-between items-center">
+    // Main container: added relative to avoid z-index issues, and padding adjustments
+    <div className="relative p-6 md:p-8 space-y-8">
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">
             User Management
           </h2>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic mt-1">
             Manage System Access & Permissions
           </p>
         </div>
         <button
           onClick={() => setModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
         >
           <UserPlus size={16} /> Add User
         </button>
       </div>
 
-      {/* Users Table */}
-      <div className="bg-white rounded-md border border-slate-100 shadow-sm overflow-hidden">
+      {/* Users Table Container – softer corners → rounded-2xl, no sharp edges */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
-            Registered Accounts ({users?.length})
+            Registered Accounts ({users?.length || 0})
           </h3>
           <UsersIcon size={14} className="text-slate-300" />
         </div>
@@ -80,7 +83,7 @@ const Users: React.FC = () => {
             <tbody className="divide-y divide-slate-50 text-sm">
               {users &&
                 users.map((u: any) => (
-                  <UserManager user={u} getRoleBadge={getRoleBadge} />
+                  <UserManager key={u.id} user={u} getRoleBadge={getRoleBadge} />
                 ))}
               {users?.length === 0 && (
                 <tr>
@@ -97,6 +100,7 @@ const Users: React.FC = () => {
         </div>
       </div>
 
+      {/* Modal – ensure it's rendered with high z-index, no overlap issues */}
       {showModal && (
         <AddModal
           fields={UserFields}
@@ -112,4 +116,4 @@ const Users: React.FC = () => {
   );
 };
 
-export default Users;
+export default Users; 
