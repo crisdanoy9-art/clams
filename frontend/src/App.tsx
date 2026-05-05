@@ -54,7 +54,12 @@ const App: React.FC = () => {
     try {
       switch (currentView) {
         case "dashboard":
-          return <Dashboard userRole={userRole} />;
+          return (
+            <Dashboard
+              userRole={userRole}
+              onNavigateToLogs={() => handleSetView("logs")}
+            />
+          );
         case "laboratories":
           return (
             <Laboratories
@@ -75,7 +80,10 @@ const App: React.FC = () => {
           return userRole === "admin" ? (
             <Users />
           ) : (
-            <Dashboard userRole={userRole} />
+            <Dashboard
+              userRole={userRole}
+              onNavigateToLogs={() => handleSetView("logs")}
+            />
           );
         case "logs":
           return <ActivityLogs />;
@@ -85,7 +93,12 @@ const App: React.FC = () => {
           handleLogout();
           return null;
         default:
-          return <Dashboard userRole={userRole} />;
+          return (
+            <Dashboard
+              userRole={userRole}
+              onNavigateToLogs={() => handleSetView("logs")}
+            />
+          );
       }
     } catch (error) {
       console.error("Render error:", error);
@@ -105,18 +118,25 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100">
-      <Navbar currentView={currentView} userRole={userRole} />
+      <Navbar
+        currentView={currentView}
+        userRole={userRole}
+        onLogout={handleLogout}
+        onNavigate={handleSetView}
+      />
 
       <div className="flex">
-        <div className="sticky top-0 h-screen">
-          <Sidebar
-            onSelect={handleSetView}
-            activeView={currentView}
-            userRole={userRole}
-            expanded={sidebarExpanded}
-            onExpandChange={setSidebarExpanded}
-          />
-        </div>
+        {localStorage.getItem("currentView") !== "settings" && (
+          <div className="sticky top-0 h-screen">
+            <Sidebar
+              onSelect={handleSetView}
+              activeView={currentView}
+              userRole={userRole}
+              expanded={sidebarExpanded}
+              onExpandChange={setSidebarExpanded}
+            />
+          </div>
+        )}
 
         <main className="flex-1 flex flex-col">
           <div className="p-8 flex-1">

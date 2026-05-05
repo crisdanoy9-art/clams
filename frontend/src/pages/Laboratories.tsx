@@ -84,74 +84,96 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
         )}
       </header>
 
-      {isLoading && (
+      {isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 size={32} className="animate-spin text-indigo-500" />
         </div>
+      ) : !labsData || labsData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="p-6 bg-slate-100 rounded-md mb-4">
+            <Monitor size={40} className="text-slate-300" />
+          </div>
+          <p className="text-sm font-black text-slate-400 uppercase tracking-widest">
+            No Laboratories Yet
+          </p>
+          <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider mt-1">
+            Add a laboratory to get started
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {labsData.map((lab: any) => {
+            const thisLabEquipment =
+              equipment?.filter(
+                (e: any) => e.lab_id === lab.lab_id && !e.is_deleted,
+              ) ?? [];
+
+            const totalCount = thisLabEquipment.length;
+            const availableCount = thisLabEquipment.filter(
+              (e: any) => e.status === "available",
+            ).length;
+            const issuesCount = thisLabEquipment.filter(
+              (e: any) => e.status === "unavailable",
+            ).length;
+
+            return (
+              <div
+                key={lab.lab_id}
+                className="relative bg-white p-8 rounded-md border border-zinc-200 shadow-sm hover:border-indigo-400 cursor-pointer transition-all group"
+                onClick={() => setSelectedLab(lab)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="font-black text-slate-800 text-2xl uppercase tracking-tighter">
+                    {lab.lab_name}
+                  </h4>
+                  <div className="bg-emerald-50 text-emerald-500 px-3 py-1 rounded-md border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
+                    Active
+                  </div>
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
+                  {lab.room_number} · {lab.building}
+                </p>
+                <div className="flex gap-6 border-t border-zinc-50 pt-6">
+                  {totalCount === 0 ? (
+                    <div className="w-full text-center py-2">
+                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+                        Laboratory is currently empty
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <p className="text-xl font-black text-slate-800">
+                          {totalCount}
+                        </p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                          Total
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xl font-black text-emerald-500">
+                          {availableCount}
+                        </p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                          Ready
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xl font-black text-rose-500">
+                          {issuesCount}
+                        </p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
+                          Issues
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {labsData?.map((lab: any) => {
-          const thisLabEquipment =
-            equipment?.filter(
-              (e: any) => e.lab_id === lab.lab_id && !e.is_deleted,
-            ) ?? [];
-
-          const totalCount = thisLabEquipment.length;
-          const availableCount = thisLabEquipment.filter(
-            (e: any) => e.status === "available",
-          ).length;
-          const issuesCount = thisLabEquipment.filter(
-            (e: any) => e.status === "unavailable",
-          ).length;
-
-          return (
-            <div
-              key={lab.lab_id}
-              className="relative bg-white p-8 rounded-md border border-zinc-200 shadow-sm hover:border-indigo-400 cursor-pointer transition-all group"
-              onClick={() => setSelectedLab(lab)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-black text-slate-800 text-2xl uppercase tracking-tighter">
-                  {lab.lab_name}
-                </h4>
-                <div className="bg-emerald-50 text-emerald-500 px-3 py-1 rounded-md border border-emerald-100 text-[9px] font-black uppercase tracking-widest">
-                  Active
-                </div>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">
-                {lab.room_number} · {lab.building}
-              </p>
-              <div className="flex gap-6 border-t border-zinc-50 pt-6">
-                <div>
-                  <p className="text-xl font-black text-slate-800">
-                    {totalCount}
-                  </p>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
-                    Total
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xl font-black text-emerald-500">
-                    {availableCount}
-                  </p>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
-                    Ready
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xl font-black text-rose-500">
-                    {issuesCount}
-                  </p>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider">
-                    Issues
-                  </p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
       {selectedLab && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -163,7 +185,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
               setSelectedPCId(null);
             }}
           />
-
           <div className="relative bg-white w-full max-w-7xl h-[85vh] rounded-md shadow-2xl flex overflow-hidden">
             <div className="flex-1 flex flex-col min-w-0 border-r border-zinc-100">
               <div className="p-10 border-b border-zinc-50 flex justify-between items-center bg-slate-50/30">
@@ -214,7 +235,6 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
                     {labEquipment.map((pc: any) => {
                       const effectiveStatus =
                         statusOverrides[pc.equipment_id] ?? pc.status;
-
                       return (
                         <div
                           key={pc.equipment_id}

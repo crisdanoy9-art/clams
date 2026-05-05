@@ -123,7 +123,6 @@ const ActivityLogs: React.FC = () => {
                       </span>
                       {log.table_affected && (
                         <>
-                          {" "}
                           — table:{" "}
                           <span className="text-slate-700">
                             {log.table_affected}

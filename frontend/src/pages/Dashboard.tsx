@@ -6,6 +6,14 @@ import {
   ChevronDown,
   ChevronUp,
   Wrench,
+  LogIn,
+  Trash2,
+  PenLine,
+  PackagePlus,
+  UserPlus,
+  AlertCircle,
+  History,
+  Database,
 } from "lucide-react";
 import { useTableData } from "../lib/hooks/useTableData";
 
@@ -13,18 +21,65 @@ interface DashboardProps {
   userRole: "admin" | "instructor";
 }
 
-const DashboardProp: React.FC<DashboardProps> = () => {
+const getIconAndColor = (action: string, table: string) => {
+  const a = action.toLowerCase();
+  const t = (table || "").toLowerCase();
+
+  if (a.includes("login"))
+    return { icon: <LogIn size={14} />, color: "bg-green-50 text-green-500" };
+  if (a.includes("delete") || a.includes("removed"))
+    return { icon: <Trash2 size={14} />, color: "bg-rose-50 text-rose-500" };
+  if (a.includes("update") || a.includes("edit"))
+    return { icon: <PenLine size={14} />, color: "bg-amber-50 text-amber-500" };
+  if (a.includes("insert") || a.includes("add") || a.includes("create"))
+    return {
+      icon: <PackagePlus size={14} />,
+      color: "bg-indigo-50 text-indigo-500",
+    };
+  if (t.includes("user"))
+    return {
+      icon: <UserPlus size={14} />,
+      color: "bg-purple-50 text-purple-500",
+    };
+  if (t.includes("damage"))
+    return {
+      icon: <AlertCircle size={14} />,
+      color: "bg-rose-50 text-rose-500",
+    };
+  if (t.includes("borrow"))
+    return { icon: <History size={14} />, color: "bg-blue-50 text-blue-500" };
+
+  return { icon: <Database size={14} />, color: "bg-slate-100 text-slate-500" };
+};
+
+const formatTime = (timestamp: string) => {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+interface DashboardProps {
+  userRole: "admin" | "instructor";
+  onNavigateToLogs: () => void;
+}
+const DashboardProp: React.FC<DashboardProps> = ({
+  userRole,
+  onNavigateToLogs,
+}) => {
   const { data: labData } = useTableData("laboratories");
   const { data: equipmentData } = useTableData("equipment");
+  const { data: logsData, isLoading } = useTableData("activity_logs", {
+    refetchInterval: 3000,
+  });
 
-  // State to track the specific ID of the expanded lab
   const [expandedLabId, setExpandedLabId] = useState<number | string | null>(
     null,
   );
 
   const activeEquipment =
     equipmentData?.filter((e: any) => !e.is_deleted) ?? [];
-
   const totalPcs = activeEquipment.length;
   const availableUnits = activeEquipment.filter(
     (e: any) => e.status === "available",
@@ -32,17 +87,27 @@ const DashboardProp: React.FC<DashboardProps> = () => {
   const issueUnits = activeEquipment.filter(
     (e: any) => e.status === "unavailable",
   ).length;
-
   const availablePercent =
     totalPcs === 0 ? 0 : (availableUnits / totalPcs) * 100;
   const issuePercent = totalPcs === 0 ? 0 : (issueUnits / totalPcs) * 100;
+
+  const logs: any[] = logsData ?? [];
+  const sortedLogs = [...logs].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const recentLogs = sortedLogs.slice(0, 3);
 
   const getLabEquipment = (labId: number | string) =>
     activeEquipment.filter((e: any) => e.lab_id === labId);
 
   const toggleExpand = (labId: number | string) => {
-    // If clicking the one already open, close it. Otherwise, open the new one.
     setExpandedLabId((prevId) => (prevId === labId ? null : labId));
+  };
+
+  const goToLogs = () => {
+    localStorage.setItem("currentView", "logs");
+    window.dispatchEvent(new Event("storage"));
   };
 
   return (
@@ -108,8 +173,6 @@ const DashboardProp: React.FC<DashboardProps> = () => {
                 const issueCount = thisLabEquipment.filter(
                   (e: any) => e.status === "unavailable",
                 ).length;
-
-                // Strict check to ensure only the specific ID triggers expansion
                 const isExpanded = expandedLabId === lab.lab_id;
 
                 return (
@@ -117,7 +180,6 @@ const DashboardProp: React.FC<DashboardProps> = () => {
                     key={lab.lab_id}
                     className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden flex flex-col h-fit"
                   >
-                    {/* Header - Click to expand/collapse */}
                     <div
                       className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between"
                       onClick={() => toggleExpand(lab.lab_id)}
@@ -148,7 +210,6 @@ const DashboardProp: React.FC<DashboardProps> = () => {
                       </div>
                     </div>
 
-                    {/* Stats Summary - Always visible */}
                     <div className="px-4 pb-3 grid grid-cols-2 gap-2 text-center text-xs">
                       <div className="bg-emerald-50 rounded-md p-2">
                         <p className="text-emerald-600 font-bold">
@@ -162,7 +223,6 @@ const DashboardProp: React.FC<DashboardProps> = () => {
                       </div>
                     </div>
 
-                    {/* Expanded Content - Assets list only shows when THIS lab is expanded */}
                     {isExpanded && (
                       <div className="border-t border-zinc-200 bg-slate-50/50 p-3">
                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">
@@ -220,15 +280,88 @@ const DashboardProp: React.FC<DashboardProps> = () => {
 
         {/* Recent Activity */}
         <div className="mb-8">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-            Recent Activity
-          </h3>
-          <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
-            <Clock size={28} className="mx-auto text-slate-300 mb-2" />
-            <p className="text-sm text-slate-500">
-              No recent activity to show.
-            </p>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Recent Activity
+            </h3>
+            {sortedLogs.length > 3 && (
+              <button
+                onClick={onNavigateToLogs}
+                className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+              >
+                View More →
+              </button>
+            )}
           </div>
+
+          {isLoading ? (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
+              <Clock
+                size={28}
+                className="mx-auto text-slate-300 mb-2 animate-pulse"
+              />
+              <p className="text-sm text-slate-400">Loading activity...</p>
+            </div>
+          ) : recentLogs.length === 0 ? (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
+              <Clock size={28} className="mx-auto text-slate-300 mb-2" />
+              <p className="text-sm text-slate-500">
+                No recent activity to show.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm divide-y divide-slate-100">
+              {recentLogs.map((log: any) => {
+                const { icon, color } = getIconAndColor(
+                  log.action,
+                  log.table_affected ?? "",
+                );
+                return (
+                  <div
+                    key={log.log_id}
+                    className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className={`p-2 rounded-md shrink-0 ${color}`}>
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center mb-0.5">
+                        <p className="text-xs font-black text-slate-800 uppercase">
+                          {log.action}
+                        </p>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          {formatTime(log.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-500">
+                        <span className="text-indigo-600">
+                          {log.user_id ?? "System"}
+                        </span>
+                        {log.table_affected && (
+                          <>
+                            {" "}
+                            —{" "}
+                            <span className="text-slate-700">
+                              {log.table_affected}
+                            </span>
+                          </>
+                        )}
+                        {log.record_id && (
+                          <>
+                            {" "}
+                            ·{" "}
+                            <span className="text-slate-700">
+                              #{log.record_id}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <footer className="border-t border-slate-200 pt-6 mt-4 text-center text-xs text-slate-400">
@@ -264,9 +397,7 @@ const StatCard: React.FC<{
   isWarning,
 }) => (
   <div
-    className={`p-5 rounded-md border border-slate-200 ${bgColor} ${
-      isWarning ? "shadow-sm" : ""
-    }`}
+    className={`p-5 rounded-md border border-slate-200 ${bgColor} ${isWarning ? "shadow-sm" : ""}`}
   >
     <div className="flex justify-between items-start mb-4">
       <div>
@@ -288,4 +419,3 @@ const StatCard: React.FC<{
 );
 
 export default DashboardProp;
-
