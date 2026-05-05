@@ -1,42 +1,45 @@
 import React, { useState, useMemo } from "react";
 import {
-  AlertTriangle,
   Clock,
   Wrench,
   CheckCircle2,
   Plus,
-  X,
-  Monitor,
-  MessageSquare,
   Calendar,
   ChevronDown,
   Computer,
   AlertCircle,
 } from "lucide-react";
 import { AddModal } from "../components/reusableModal";
-import { ReportFields } from "../lib/validations/reports";
 import { useQueryClient } from "@tanstack/react-query";
-
-interface DamageReport {
-  id: string;
-  item: string;
-  reportedBy: string;
-  description: string;
-  date: string; // YYYY-MM-DD
-  status: "Pending" | "Under Repair" | "Resolved";
-}
+import { useTableData } from "../lib/hooks/useTableData";
 
 type DateFilter = "weekly" | "monthly" | "yearly";
 
 const DamageReports: React.FC = () => {
   const [showModal, setModal] = useState(false);
   const [dateFilter, setDateFilter] = useState<DateFilter>("monthly");
-  const [reports, setReports] = useState<DamageReport[]>([]);
-  const [formData, setFormData] = useState({ item: "", description: "" });
   const queryClient = useQueryClient();
 
-  // Get filtered reports based on date filter
-  const getFilteredReports = useMemo(() => {
+  const role = localStorage.getItem("role");
+  const userId = localStorage.getItem("user_id");
+
+  const { data: reportsData } = useTableData("damage_reports", {
+    refetchInterval: 3000,
+  });
+  const { data: equipmentData } = useTableData("equipment");
+  const { data: usersData } = useTableData("users");
+  const { data: labData } = useTableData("laboratories");
+
+  const allReports: any[] = reportsData ?? [];
+
+  const roleFilteredReports = useMemo(() => {
+    if (role === "instructor") {
+      return allReports.filter((r) => r.instructor_id === userId);
+    }
+    return allReports;
+  }, [allReports, role, userId]);
+
+  const filteredReports = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
@@ -44,8 +47,8 @@ const DamageReports: React.FC = () => {
     oneWeekAgo.setDate(now.getDate() - 7);
     oneWeekAgo.setHours(0, 0, 0, 0);
 
-    return reports.filter((report) => {
-      const reportDate = new Date(report.date);
+    return roleFilteredReports.filter((report) => {
+      const reportDate = new Date(report.created_at);
       switch (dateFilter) {
         case "weekly":
           return reportDate >= oneWeekAgo;
@@ -60,54 +63,24 @@ const DamageReports: React.FC = () => {
           return true;
       }
     });
-  }, [reports, dateFilter]);
+  }, [roleFilteredReports, dateFilter]);
 
-  // Sort filtered reports by date (newest first)
-  const sortedFilteredReports = useMemo(() => {
-    return [...getFilteredReports].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  const sortedReports = useMemo(() => {
+    return [...filteredReports].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
-  }, [getFilteredReports]);
+  }, [filteredReports]);
 
-  // Stats based on filtered reports
   const stats = useMemo(() => {
-    // Unique items (PCs/peripherals) in filtered reports
-    const uniqueItems = new Set(getFilteredReports.map((r) => r.item));
-    const totalPCs = uniqueItems.size;
-
-    // Unique items with unresolved status (Pending or Under Repair)
+    const uniqueItems = new Set(filteredReports.map((r) => r.equipment_id));
     const damagedItems = new Set(
-      getFilteredReports
-        .filter((r) => r.status !== "Resolved")
-        .map((r) => r.item),
+      filteredReports
+        .filter((r) => (r.status ?? "pending") !== "resolved")
+        .map((r) => r.equipment_id),
     );
-    const damagedPCs = damagedItems.size;
-
-    return { totalPCs, damagedPCs };
-  }, [getFilteredReports]);
-
-  const formatDisplayDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newReport: DamageReport = {
-      id: `REP-${Math.floor(100 + Math.random() * 900)}`,
-      item: formData.item,
-      reportedBy: "Staff Instructor",
-      description: formData.description,
-      date: new Date().toISOString().split("T")[0],
-      status: "Pending",
-    };
-    setReports([newReport, ...reports]);
-    setModal(false);
-    setFormData({ item: "", description: "" });
-  };
+    return { totalPCs: uniqueItems.size, damagedPCs: damagedItems.size };
+  }, [filteredReports]);
 
   const getFilterLabel = () => {
     switch (dateFilter) {
@@ -124,24 +97,98 @@ const DamageReports: React.FC = () => {
 
   const getCountForPeriod = (filter: DateFilter) => {
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(now.getDate() - 7);
     oneWeekAgo.setHours(0, 0, 0, 0);
-
-    return reports.filter((report) => {
-      const reportDate = new Date(report.date);
-      if (filter === "weekly") return reportDate >= oneWeekAgo;
+    return roleFilteredReports.filter((r) => {
+      const d = new Date(r.created_at);
+      if (filter === "weekly") return d >= oneWeekAgo;
       if (filter === "monthly")
         return (
-          reportDate.getMonth() === currentMonth &&
-          reportDate.getFullYear() === currentYear
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
         );
-      if (filter === "yearly") return reportDate.getFullYear() === currentYear;
+      if (filter === "yearly") return d.getFullYear() === now.getFullYear();
       return false;
     }).length;
   };
+
+  const getEquipmentName = (id: number) =>
+    equipmentData?.find((e: any) => e.equipment_id === id)?.item_name ??
+    `#${id}`;
+
+  const getInstructorName = (id: string) => {
+    if (!id) return "Unknown";
+    const user = usersData?.find((u: any) => u.user_id === id);
+    return user ? `${user.first_name} ${user.last_name}` : id;
+  };
+
+  const getLabName = (id: number) =>
+    labData?.find((l: any) => l.lab_id === id)?.lab_name ?? `Lab #${id}`;
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "in_progress":
+        return {
+          bg: "bg-amber-50 text-amber-500 border-amber-100",
+          icon: <Wrench size={24} />,
+          iconBg: "bg-amber-50 text-amber-500",
+        };
+      case "resolved":
+        return {
+          bg: "bg-emerald-50 text-emerald-600 border-emerald-100",
+          icon: <CheckCircle2 size={24} />,
+          iconBg: "bg-emerald-50 text-emerald-500",
+        };
+      default: // pending or null
+        return {
+          bg: "bg-rose-50 text-rose-500 border-rose-100",
+          icon: <Clock size={24} />,
+          iconBg: "bg-rose-50 text-rose-500",
+        };
+    }
+  };
+
+  const equipmentOptions =
+    equipmentData?.map((e: any) => ({
+      value: String(e.equipment_id),
+      label: e.item_name,
+    })) ?? [];
+
+  const labOptions =
+    labData?.map((l: any) => ({
+      value: String(l.lab_id),
+      label: l.lab_name,
+    })) ?? [];
+
+  const ReportFields = [
+    {
+      name: "lab_id",
+      label: "Laboratory",
+      type: "select" as const,
+      placeholder: "Select laboratory",
+      options: labOptions,
+    },
+    {
+      name: "equipment_id",
+      label: "Equipment",
+      type: "select" as const,
+      placeholder: "Select damaged equipment",
+      options: equipmentOptions,
+    },
+    {
+      name: "subject",
+      label: "Subject",
+      type: "text" as const,
+      placeholder: "e.g., Broken Monitor Screen",
+    },
+    {
+      name: "description",
+      label: "Description",
+      type: "text" as const,
+      placeholder: "Describe how it happened...",
+    },
+  ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -154,12 +201,14 @@ const DamageReports: React.FC = () => {
             Monitor PC health & report equipment issues
           </p>
         </div>
-        <button
-          onClick={() => setModal(true)}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
-        >
-          <Plus size={16} /> New Report
-        </button>
+        {role === "instructor" && (
+          <button
+            onClick={() => setModal(true)}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+          >
+            <Plus size={16} /> New Report
+          </button>
+        )}
       </header>
 
       {/* Filter Bar */}
@@ -169,7 +218,7 @@ const DamageReports: React.FC = () => {
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as DateFilter)}
-              className="appearance-none bg-white border border-slate-200 rounded-md pl-4 pr-10 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer"
+              className="appearance-none bg-white border border-slate-200 rounded-md pl-4 pr-10 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             >
               <option value="weekly">
                 Weekly ({getCountForPeriod("weekly")})
@@ -193,7 +242,7 @@ const DamageReports: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards: Total PCs & Damaged PCs */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-md border border-slate-100 shadow-sm p-6 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -223,22 +272,21 @@ const DamageReports: React.FC = () => {
               {stats.damagedPCs}
             </p>
             <p className="text-[9px] text-slate-400 mt-1">
-              Pending / Under Repair
+              Pending / In Progress
             </p>
           </div>
         </div>
       </div>
 
-      {/* Main Table / List */}
+      {/* Table */}
       <div className="bg-white rounded-md border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex justify-between items-center">
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">
             All Laboratory Incident Logs • {getFilterLabel()}
           </h3>
         </div>
-
         <div className="divide-y divide-slate-50">
-          {sortedFilteredReports.length === 0 ? (
+          {sortedReports.length === 0 ? (
             <div className="p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 text-slate-300 mb-4">
                 <Calendar size={28} />
@@ -246,151 +294,88 @@ const DamageReports: React.FC = () => {
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                 No reports found for {getFilterLabel().toLowerCase()}
               </p>
-              <button
-                onClick={() => setModal(true)}
-                className="mt-4 text-indigo-600 text-[9px] font-black uppercase tracking-widest hover:underline"
-              >
-                + Create a new report
-              </button>
+              {role === "instructor" && (
+                <button
+                  onClick={() => setModal(true)}
+                  className="mt-4 text-indigo-600 text-[9px] font-black uppercase tracking-widest hover:underline"
+                >
+                  + Create a new report
+                </button>
+              )}
             </div>
           ) : (
-            sortedFilteredReports.map((report) => (
-              <div
-                key={report.id}
-                className="p-8 hover:bg-slate-50/50 transition-colors group flex items-center justify-between"
-              >
-                <div className="flex items-center gap-8">
-                  <div
-                    className={`w-14 h-14 rounded-md flex items-center justify-center transition-transform group-hover:scale-110 ${
-                      report.status === "Pending"
-                        ? "bg-rose-50 text-rose-500"
-                        : report.status === "Under Repair"
-                          ? "bg-amber-50 text-amber-500"
-                          : "bg-emerald-50 text-emerald-500"
-                    }`}
-                  >
-                    {report.status === "Pending" ? (
-                      <Clock size={24} />
-                    ) : report.status === "Under Repair" ? (
-                      <Wrench size={24} />
-                    ) : (
-                      <CheckCircle2 size={24} />
+            sortedReports.map((report) => {
+              const status = report.status ?? "pending";
+              const { bg, icon, iconBg } = getStatusStyle(status);
+              return (
+                <div
+                  key={report.report_id}
+                  className="p-8 hover:bg-slate-50/50 transition-colors group flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-8">
+                    <div
+                      className={`w-14 h-14 rounded-md flex items-center justify-center transition-transform group-hover:scale-110 ${iconBg}`}
+                    >
+                      {icon}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                          RPT-{report.report_id}
+                        </span>
+                        <span className="w-1 h-1 bg-slate-200 rounded-md"></span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          {new Date(report.created_at).toLocaleDateString(
+                            undefined,
+                            { year: "numeric", month: "short", day: "numeric" },
+                          )}
+                        </span>
+                      </div>
+                      <h4 className="text-lg font-black text-slate-800 tracking-tight">
+                        {report.subject ??
+                          getEquipmentName(report.equipment_id)}
+                      </h4>
+                      <p className="text-xs text-slate-500 italic mt-1 font-medium max-w-xl">
+                        "{report.description}"
+                      </p>
+                      {role === "admin" && (
+                        <p className="text-[10px] text-slate-400 mt-1 font-bold">
+                          Reported by:{" "}
+                          <span className="text-indigo-500">
+                            {getInstructorName(report.instructor_id)}
+                          </span>{" "}
+                          · {getLabName(report.lab_id)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-4">
+                    <span
+                      className={`text-[9px] font-black px-4 py-1.5 rounded-full border uppercase tracking-widest ${bg}`}
+                    >
+                      {status.replace("_", " ")}
+                    </span>
+                    {report.admin_remarks && (
+                      <p className="text-[9px] text-slate-400 max-w-[200px] text-right italic">
+                        "{report.admin_remarks}"
+                      </p>
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                        {report.id}
-                      </span>
-                      <span className="w-1 h-1 bg-slate-200 rounded-md"></span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">
-                        {formatDisplayDate(report.date)}
-                      </span>
-                    </div>
-                    <h4 className="text-lg font-black text-slate-800 tracking-tight">
-                      {report.item}
-                    </h4>
-                    <p className="text-xs text-slate-500 italic mt-1 font-medium max-w-xl">
-                      "{report.description}"
-                    </p>
-                  </div>
                 </div>
-                <div className="text-right flex flex-col items-end gap-4">
-                  <span
-                    className={`text-[9px] font-black px-4 py-1.5 rounded-full border uppercase tracking-widest ${
-                      report.status === "Pending"
-                        ? "border-rose-100 bg-rose-50 text-rose-500"
-                        : report.status === "Under Repair"
-                          ? "border-amber-100 bg-amber-50 text-amber-500"
-                          : "border-emerald-100 bg-emerald-50 text-emerald-600"
-                    }`}
-                  >
-                    {report.status}
-                  </span>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
 
-      {/* Report Modal */}
-      {/* {showModal && ( */}
-      {/*   <div className="fixed inset-0 z-[100] flex items-center justify-center p-6"> */}
-      {/*     <div */}
-      {/*       className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" */}
-      {/*       onClick={() => setModal(false)} */}
-      {/*     ></div> */}
-      {/*     <div className="relative bg-white w-full max-w-lg rounded-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"> */}
-      {/*       <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-slate-50/50"> */}
-      {/*         <div className="flex items-center gap-4"> */}
-      {/*           <div className="w-12 h-12 bg-rose-500 rounded-md flex items-center justify-center text-white shadow-xl shadow-rose-200"> */}
-      {/*             <AlertTriangle size={20} /> */}
-      {/*           </div> */}
-      {/*           <div> */}
-      {/*             <h3 className="text-xl font-black text-slate-900 tracking-tight"> */}
-      {/*               Report Incident */}
-      {/*             </h3> */}
-      {/*             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest"> */}
-      {/*               Damage Details */}
-      {/*             </p> */}
-      {/*           </div> */}
-      {/*         </div> */}
-      {/*         <button */}
-      {/*           onClick={() => setModal(false)} */}
-      {/*           className="p-2 hover:bg-white rounded-md transition-colors text-slate-300 hover:text-slate-900" */}
-      {/*         > */}
-      {/*           <X size={20} /> */}
-      {/*         </button> */}
-      {/*       </div> */}
-      {/*       <form onSubmit={handleSubmit} className="p-10 space-y-8"> */}
-      {/*         <div className="space-y-3"> */}
-      {/*           <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"> */}
-      {/*             <Monitor size={12} /> Target PC / Peripheral */}
-      {/*           </label> */}
-      {/*           <input */}
-      {/*             required */}
-      {/*             value={formData.item} */}
-      {/*             onChange={(e) => */}
-      {/*               setFormData({ ...formData, item: e.target.value }) */}
-      {/*             } */}
-      {/*             className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none" */}
-      {/*             placeholder="e.g. PC-12 or Mouse Lab 1" */}
-      {/*           /> */}
-      {/*         </div> */}
-      {/*         <div className="space-y-3"> */}
-      {/*           <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1"> */}
-      {/*             <MessageSquare size={12} /> Describe the Issue */}
-      {/*           </label> */}
-      {/*           <textarea */}
-      {/*             required */}
-      {/*             rows={4} */}
-      {/*             value={formData.description} */}
-      {/*             onChange={(e) => */}
-      {/*               setFormData({ ...formData, description: e.target.value }) */}
-      {/*             } */}
-      {/*             className="w-full p-5 bg-slate-50 border-none rounded-md text-xs font-bold text-slate-800 focus:ring-2 ring-indigo-500 outline-none resize-none" */}
-      {/*             placeholder="What is wrong with the equipment?" */}
-      {/*           /> */}
-      {/*         </div> */}
-      {/*         <button */}
-      {/*           type="submit" */}
-      {/*           className="w-full py-5 bg-slate-900 text-white rounded-md font-black uppercase tracking-widest text-[10px] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/10" */}
-      {/*         > */}
-      {/*           Send to Raylle Admin */}
-      {/*         </button> */}
-      {/*       </form> */}
-      {/*     </div> */}
-      {/*   </div> */}
-      {/* )} */}
-
-      {showModal && (
+      {showModal && role === "instructor" && (
         <AddModal
           fields={ReportFields}
-          table="users"
+          table="damage_reports"
           onClose={() => setModal(false)}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ["users"] });
+            queryClient.invalidateQueries({ queryKey: ["damage_reports"] });
+            setModal(false);
           }}
         />
       )}

@@ -8,6 +8,7 @@ const allowedTables = [
   "peripherals",
   "borrow_transactions",
   "damage_reports",
+  "activity_logs",
 ];
 
 export const getLabsWithStats = async () => {
@@ -30,15 +31,18 @@ const validateTable = (table: string) => {
 
 export const getAll = async (table: string) => {
   validateTable(table);
-
   if (table === "laboratories") return getLabsWithStats();
-
+  if (table === "activity_logs") {
+    const result = await pool.query(
+      `SELECT * FROM clams.activity_logs ORDER BY created_at DESC`,
+    );
+    return result.rows;
+  }
   const result = await pool
     .query(`SELECT * FROM clams.${table} WHERE is_deleted = FALSE`)
     .catch(() => pool.query(`SELECT * FROM clams.${table}`));
   return result.rows;
 };
-
 export const getOne = async (table: string, id: string, idCol: string) => {
   validateTable(table);
   const result = await pool.query(

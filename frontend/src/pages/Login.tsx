@@ -36,6 +36,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
+      localStorage.setItem("user_id", data.user_id);
 
       setIsSuccess(true);
       setTimeout(() => onLogin(data.role as "admin" | "instructor"), 1000);

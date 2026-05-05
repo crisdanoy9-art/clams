@@ -29,3 +29,33 @@ export const CategoryField: FieldConfig[] = [
     placeholder: "e.g., Computing, Laboratory, Tools",
   },
 ];
+
+// cpu
+//
+// motherboard
+//
+// ram
+//
+// gpu
+//
+// ssd
+//
+// hdd
+//
+// psu
+//
+// case
+//
+// cooler
+//
+// monitor
+//
+// keyboard
+//
+// mouse
+//
+// headset
+//
+// webcam
+//
+// ups

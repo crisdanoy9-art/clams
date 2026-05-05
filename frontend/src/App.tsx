@@ -15,9 +15,13 @@ import Settings from "./pages/Settings"; // <-- import Settings
 import { AlertTriangle } from "lucide-react";
 
 const App: React.FC = () => {
-  const [userRole, setUserRole] = useState<"admin" | "instructor">("admin");
+  const [userRole, setUserRole] = useState<"admin" | "instructor">(
+    () => (localStorage.getItem("role") as "admin" | "instructor") || "admin",
+  );
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => !!localStorage.getItem("token"),
+  );
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentView, setCurrentView] = useState(
     () => localStorage.getItem("currentView") || "dashboard",
   );
@@ -34,7 +38,11 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user_id");
     setIsLoggedIn(false);
+    setUserRole("admin");
     setCurrentView("dashboard");
   };
 
@@ -127,4 +135,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
