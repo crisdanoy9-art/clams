@@ -121,15 +121,18 @@ const Peripherals: React.FC = () => {
           <thead className="bg-slate-50/50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b">
             <tr>
               <th className="px-8 py-6">Peripheral</th>
-              <th className="px-8 py-6 text-center">Lab</th>
               <th className="px-8 py-6 text-center">Stock (Working)</th>
+              <th className="px-8 py-6 text-center">Damages</th>
               <th className="px-8 py-6 text-center">Total Count</th>
               <th className="px-8 py-6 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50 font-bold text-xs">
             {peripherals.map((p: any) => (
-              <tr key={p.peripheral_id} className="hover:bg-slate-50/50 transition-colors">
+              <tr
+                key={p.peripheral_id}
+                className="hover:bg-slate-50/50 transition-colors"
+              >
                 <td className="px-8 py-5 flex items-center gap-3">
                   <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
                     <Package size={14} />
@@ -142,14 +145,14 @@ const Peripherals: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-8 py-5 text-center">
-                  <span className="bg-slate-100 px-3 py-1 rounded-lg">
-                    {labData?.find((lab: any) => lab.lab_id === p.lab_id)?.lab_name ?? "N/A"}
+                  <span className=" px-3 py-1 text-lg text-green-600">
+                    {p.working_count}
                   </span>
                 </td>
-                <td className="px-8 py-5 text-center text-indigo-600 font-black text-lg">
-                  {p.working_count}
+                <td className="px-8 py-5 text-center text-red-600 font-black text-lg">
+                  {p.damaged_count}
                 </td>
-                <td className="px-8 py-5 text-center text-indigo-600 font-black text-lg">
+                <td className="px-8 py-5 text-center font-black text-lg">
                   {p.total_count}
                 </td>
                 <td className="px-8 py-5 text-right">
@@ -161,7 +164,10 @@ const Peripherals: React.FC = () => {
             ))}
             {peripherals.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-8 py-12 text-center text-slate-400">
+                <td
+                  colSpan={5}
+                  className="px-8 py-12 text-center text-slate-400"
+                >
                   No peripherals added yet. Click "Add New Item" to get started.
                 </td>
               </tr>
@@ -171,7 +177,7 @@ const Peripherals: React.FC = () => {
       </div>
       {showModal && (
         <AddModal
-          fields={PeripheralFields(labOptions)}
+          fields={PeripheralFields}
           table="peripherals"
           onClose={() => setModal(false)}
           onSuccess={() => {
@@ -185,3 +191,4 @@ const Peripherals: React.FC = () => {
 };
 
 export default Peripherals;
+

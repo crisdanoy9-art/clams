@@ -286,7 +286,7 @@ const Equipment: React.FC = () => {
           <div className="flex gap-2">
             {selectedLabId && (
               <button
-                onClick={() => setSelectedLabId(null)}  
+                onClick={() => setSelectedLabId(null)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-md text-sm font-semibold"
               >
                 <X size={18} /> Clear Lab Filter
@@ -338,7 +338,7 @@ const Equipment: React.FC = () => {
                               ? "bg-blue-50 text-blue-600"
                               : "bg-rose-50 text-rose-600"
                         }`}
-                      > 
+                      >
                         {item.status.replace("_", " ")}
                       </span>
                     </div>

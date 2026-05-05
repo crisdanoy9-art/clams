@@ -8,7 +8,17 @@ export const EquipmentSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
   serial_number: z.string().min(1, "Serial number is required"),
-  specs: z.string().optional(),
+  specs: z
+    .object({
+      cpu: z.string().optional(),
+      ram: z.string().optional(),
+      storage: z.string().optional(),
+      gpu: z.string().optional(),
+      monitor: z.string().optional(),
+      keyboard: z.string().optional(),
+      mouse: z.string().optional(),
+    })
+    .optional(),
   lab_id: z.string().min(1, "Laboratory is required"),
   status: z
     .enum(["available", "in_use", "under_maintenance", "retired"])
@@ -56,8 +66,51 @@ export const EquipmentFields = (
   {
     name: "specs",
     label: "Specifications",
-    type: "text" as const,
-    placeholder: "e.g., 16GB RAM, 512GB SSD, Intel i7",
+    type: "group" as const,
+    fields: [
+      {
+        name: "cpu",
+        label: "CPU",
+        type: "text" as const,
+        placeholder: "e.g., Intel Core i7-10700",
+      },
+      {
+        name: "ram",
+        label: "RAM",
+        type: "text" as const,
+        placeholder: "e.g., 16GB DDR4",
+      },
+      {
+        name: "storage",
+        label: "Storage",
+        type: "text" as const,
+        placeholder: "e.g., 512GB SSD",
+      },
+      {
+        name: "gpu",
+        label: "GPU",
+        type: "text" as const,
+        placeholder: "e.g., NVIDIA GTX 1650",
+      },
+      {
+        name: "monitor",
+        label: "Monitor",
+        type: "text" as const,
+        placeholder: "e.g., 24-inch FHD",
+      },
+      {
+        name: "keyboard",
+        label: "Keyboard",
+        type: "text" as const,
+        placeholder: "e.g., Logitech K120",
+      },
+      {
+        name: "mouse",
+        label: "Mouse",
+        type: "text" as const,
+        placeholder: "e.g., Logitech M100",
+      },
+    ],
   },
   {
     name: "asset_tag",

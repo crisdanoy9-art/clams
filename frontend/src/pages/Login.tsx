@@ -13,22 +13,34 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   // SUCCESS STATE: This ensures the UI reflects the login immediately
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
+    setError("");
 
-    // CASE-SENSITIVE CHECK
-    const user = username.trim().toLowerCase();
-    const pass = password.trim();
+    try {
+      const res = await fetch("http://localhost:3000/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      });
 
-    if (user === "admin" && pass === "admin123") {
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Access Denied: Invalid Credentials");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+
       setIsSuccess(true);
-      setTimeout(() => onLogin("admin"), 1000); // 1s delay for "Success" animation
-    } else if (user === "instructor" && pass === "pass123") {
-      setIsSuccess(true);
-      setTimeout(() => onLogin("instructor"), 1000);
-    } else {
-      setError("Access Denied: Invalid Credentials");
+      setTimeout(() => onLogin(data.role as "admin" | "instructor"), 1000);
+    } catch (err) {
+      setError("Unable to reach server. Try again.");
     }
   };
 

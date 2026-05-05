@@ -16,18 +16,6 @@ export type DamageReport = z.infer<typeof DamageReportSchema>;
 // FIX: Changed from Record to Array so .map() works
 export const ReportFields = [
   {
-    name: "instructor_id",
-    label: "Instructor",
-    type: "select" as const,
-    placeholder: "Select instructor",
-  },
-  {
-    name: "lab_id",
-    label: "Laboratory",
-    type: "select" as const,
-    placeholder: "Select lab",
-  },
-  {
     name: "equipment_id",
     label: "Equipment",
     type: "select" as const,
@@ -53,9 +41,8 @@ export const ReportFields = [
     label: "Status",
     type: "select" as const,
     options: [
-      { value: "pending", label: "Pending" },
-      { value: "in_progress", label: "In Progress" },
-      { value: "resolved", label: "Resolved" },
+      { value: "unavailable", label: "unavailable" },
+      { value: "under maintenance", label: "under maintenance" },
     ],
   },
   {

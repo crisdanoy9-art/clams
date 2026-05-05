@@ -38,9 +38,9 @@ const App: React.FC = () => {
     setCurrentView("dashboard");
   };
 
-  // if (!isLoggedIn) {
-  //   return <Login onLogin={handleLogin} />;
-  // }
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   const renderView = () => {
     try {
@@ -71,7 +71,7 @@ const App: React.FC = () => {
           );
         case "logs":
           return <ActivityLogs />;
-        case "settings":           // <-- new case
+        case "settings": // <-- new case
           return <Settings />;
         case "logout":
           handleLogout();
@@ -84,8 +84,12 @@ const App: React.FC = () => {
       return (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-red-800 mb-2">Something went wrong</h2>
-          <p className="text-red-700">Unable to load this page. Please try again.</p>
+          <h2 className="text-xl font-bold text-red-800 mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-red-700">
+            Unable to load this page. Please try again.
+          </p>
         </div>
       );
     }
@@ -123,3 +127,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
