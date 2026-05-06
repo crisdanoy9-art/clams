@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Laboratories from "./pages/Laboratories";
@@ -11,7 +11,7 @@ import ActivityLogs from "./pages/ActivityLogs";
 import DamageReports from "./pages/DamageReports";
 import Login from "./pages/Login";
 import { Navbar } from "./components/navBar";
-import Settings from "./pages/Settings"; // <-- import Settings
+import Settings from "./pages/Settings";
 import { AlertTriangle } from "lucide-react";
 
 const App: React.FC = () => {
@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const handleLogin = (role: "admin" | "instructor") => {
     setUserRole(role);
     setIsLoggedIn(true);
+    localStorage.setItem("currentView", "dashboard"); // Set this too
     setCurrentView("dashboard");
   };
 
@@ -41,10 +42,24 @@ const App: React.FC = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("user_id");
+    localStorage.setItem("currentView", "dashboard"); // Reset to dashboard on logout
     setIsLoggedIn(false);
     setUserRole("admin");
     setCurrentView("dashboard");
   };
+
+  // Listen for storage changes (in case of logout from another tab)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setIsLoggedIn(false);
+        setCurrentView("dashboard");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
@@ -72,7 +87,7 @@ const App: React.FC = () => {
         case "peripherals":
           return <Peripherals />;
         case "borrow":
-          return <BorrowReturn userRole={userRole} role={"admin"} />;
+          return <BorrowReturn userRole={userRole} />;
         case "reports":
         case "damage":
           return <DamageReports />;
@@ -87,7 +102,7 @@ const App: React.FC = () => {
           );
         case "logs":
           return <ActivityLogs />;
-        case "settings": // <-- new case
+        case "settings":
           return <Settings />;
         case "logout":
           handleLogout();
@@ -116,6 +131,10 @@ const App: React.FC = () => {
     }
   };
 
+  // Determine if sidebar should be shown
+  // Don't show sidebar for settings page
+  const showSidebar = currentView !== "settings";
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100">
       <Navbar
@@ -126,7 +145,7 @@ const App: React.FC = () => {
       />
 
       <div className="flex">
-        {localStorage.getItem("currentView") !== "settings" && (
+        {showSidebar && (
           <div className="sticky top-0 h-screen">
             <Sidebar
               onSelect={handleSetView}
@@ -140,7 +159,9 @@ const App: React.FC = () => {
 
         <main className="flex-1 flex flex-col">
           <div className="p-8 flex-1">
-            <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <div
+              className={`mx-auto animate-in fade-in slide-in-from-bottom-2 duration-500 ${!showSidebar ? "max-w-6xl" : "max-w-7xl"}`}
+            >
               {renderView()}
             </div>
           </div>

@@ -11,6 +11,10 @@ const allowedTables = [
   "activity_logs",
 ];
 
+const validateTable = (table: string) => {
+  if (!allowedTables.includes(table)) throw new Error("Invalid table");
+};
+
 export const getLabsWithStats = async () => {
   const result = await pool.query(`
     SELECT
@@ -23,10 +27,6 @@ export const getLabsWithStats = async () => {
     ORDER BY l.lab_id
   `);
   return result.rows;
-};
-
-const validateTable = (table: string) => {
-  if (!allowedTables.includes(table)) throw new Error("Invalid table");
 };
 
 export const getAll = async (table: string) => {
@@ -43,6 +43,7 @@ export const getAll = async (table: string) => {
     .catch(() => pool.query(`SELECT * FROM clams.${table}`));
   return result.rows;
 };
+
 export const getOne = async (table: string, id: string, idCol: string) => {
   validateTable(table);
   const result = await pool.query(
@@ -54,6 +55,17 @@ export const getOne = async (table: string, id: string, idCol: string) => {
 
 export const insertOne = async (table: string, data: Record<string, any>) => {
   validateTable(table);
+
+  // Auto-set borrow_date and remarks for borrow_transactions
+  if (table === "borrow_transactions") {
+    if (!data.borrow_date) {
+      data.borrow_date = new Date().toISOString().split("T")[0];
+    }
+    if (!data.remarks) {
+      data.remarks = "borrowed";
+    }
+  }
+
   const columns = Object.keys(data).join(", ");
   const values = Object.values(data);
   const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");

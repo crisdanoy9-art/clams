@@ -32,4 +32,3 @@ export const PeripheralFields = [
     placeholder: "0",
   },
 ];
-

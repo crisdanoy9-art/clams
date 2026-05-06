@@ -91,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       id: "borrow",
       label: "Borrow & Return",
       icon: <ClipboardList size={20} />,
-      roles: ["instructor"],
+      roles: ["instructor", "admin"],
     },
     {
       id: "damage",

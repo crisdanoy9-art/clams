@@ -185,7 +185,7 @@ const Laboratories: React.FC<LaboratoriesProps> = ({
               setSelectedPCId(null);
             }}
           />
-          <div className="relative bg-white w-full max-w-7xl h-[85vh] rounded-md shadow-2xl flex overflow-hidden">
+          <div className="relative bg-white w-full max-w-7xl h-[85vh] rounded-md shadow-2xl flex overflow-hidden animate-[drop_0.6s_cubic-bezier(0.34,1.56,0.64,1)]">
             <div className="flex-1 flex flex-col min-w-0 border-r border-zinc-100">
               <div className="p-10 border-b border-zinc-50 flex justify-between items-center bg-slate-50/30">
                 <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">

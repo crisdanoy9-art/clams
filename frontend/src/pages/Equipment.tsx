@@ -11,13 +11,11 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
-  LayoutGrid,
 } from "lucide-react";
 import { AddModal } from "../components/reusableModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { EquipmentFields } from "../lib/validations/equipment";
 import { useTableData } from "../lib/hooks/useTableData";
-import { CategoryField } from "../lib/validations/categories";
 
 const Equipment: React.FC = () => {
   const [selectedLabId, setSelectedLabId] = useState<number | null>(null);
@@ -25,29 +23,27 @@ const Equipment: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const tableRef = useRef<HTMLDivElement>(null);
   const [showModal, setModal] = useState(false);
-  type section = "asset" | "category";
-  const [whichSec, setWhichSec] = useState<section | null>(null);
 
   const queryClient = useQueryClient();
   const { data: labData } = useTableData("laboratories");
   const { data: categoryData } = useTableData("categories");
   const { data: equipmentData } = useTableData("equipment");
+  const { data: peripheralData } = useTableData("peripherals"); // ADD THIS
 
   // 1. Filter out deleted items and prepare data
   const activeEquipment =
     equipmentData?.filter((e: any) => !e.is_deleted) ?? [];
 
-  // 2. Dynamic Options for Modals
-  const labOptions =
-    labData?.map((lab: any) => ({
-      value: String(lab.lab_id),
-      label: lab.lab_name,
-    })) ?? [];
-
   const categoryOptions =
     categoryData?.map((cat: any) => ({
       value: String(cat.category_id),
       label: cat.category_name,
+    })) ?? [];
+
+  const labOptions =
+    labData?.map((lab: any) => ({
+      value: String(lab.lab_id),
+      label: lab.lab_name,
     })) ?? [];
 
   // 3. Dashboard Totals (matching DB status strings)
@@ -117,17 +113,6 @@ const Equipment: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
-              setWhichSec("category");
-              setModal(true);
-            }}
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-md hover:bg-slate-50 transition-all font-bold text-[11px] uppercase tracking-wider shadow-sm"
-          >
-            <LayoutGrid size={16} /> Add Category
-          </button>
-
-          <button
-            onClick={() => {
-              setWhichSec("asset");
               setModal(true);
             }}
             className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-md hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 font-bold text-[11px] uppercase tracking-wider"
@@ -352,12 +337,12 @@ const Equipment: React.FC = () => {
 
       {showModal && (
         <AddModal
-          fields={
-            whichSec === "category"
-              ? CategoryField
-              : EquipmentFields(labOptions, categoryOptions)
-          }
-          table={whichSec === "asset" ? "equipment" : "categories"}
+          fields={EquipmentFields(
+            categoryOptions,
+            labOptions,
+            peripheralData || [], // Pass everything here
+          )}
+          table={"equipment"}
           onClose={() => setModal(false)}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ["equipment"] });

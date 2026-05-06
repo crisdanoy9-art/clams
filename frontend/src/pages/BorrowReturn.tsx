@@ -1,322 +1,213 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ClipboardList, Plus, RotateCcw, Search, User, Package, Calendar, 
-  X, AlertCircle, CheckCircle, Clock, Layers, Users, BookOpen, 
-  Repeat, ArrowLeftRight, HardDrive
-} from 'lucide-react';
-
-interface Item {
-  id: number;
-  name: string;
-  total: number;
-  available: number;
-  category: string;
-  model?: string;
-  laboratory?: string;
-}
-
-interface Transaction {
-  id: number;
-  itemId: number;
-  borrowerName: string;
-  borrowDate: string;
-  dueDate: string;
-  returnDate?: string;
-  status: 'Borrowed' | 'Returned';
-}
+import React, { useState } from "react";
+import {
+  ClipboardList,
+  Plus,
+  Search,
+  User,
+  Package,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Layers,
+  Users,
+  Repeat,
+  ArrowLeftRight,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
+import { AddModal } from "../components/reusableModal";
+import { borrowFields } from "../lib/validations/returns";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTableData } from "../lib/hooks/useTableData";
+import { updateData } from "../lib/api/Methods";
 
 interface BorrowReturnProps {
-  role: 'admin' | 'instructor';
+  userRole: "admin" | "instructor";
 }
 
-interface BorrowReturnProps {
-  userRole: 'admin' | 'instructor';
-}
 const BorrowReturn: React.FC<BorrowReturnProps> = ({ userRole }) => {
-  // ---------- STATE ----------
-  const [items, setItems] = useState<Item[]>([
-    { id: 1, name: 'Logitech Headset', total: 8, available: 5, category: 'Audio', model: 'H390', laboratory: 'Laboratory 1' },
-    { id: 2, name: 'VGA Adapter', total: 4, available: 2, category: 'Adapter', model: 'UGREEN', laboratory: 'Laboratory 2' },
-    { id: 3, name: 'Webcam C922', total: 6, available: 3, category: 'Video', model: 'Logitech C922', laboratory: 'Laboratory 1' },
-    { id: 4, name: 'HDMI Cable', total: 10, available: 7, category: 'Cable', model: '6ft', laboratory: 'Laboratory 3' },
-    { id: 5, name: 'Wireless Mouse', total: 12, available: 9, category: 'Peripheral', model: 'MX Master 3', laboratory: 'Laboratory 2' },
-    { id: 6, name: 'Tripod Stand', total: 3, available: 2, category: 'Equipment', model: 'Amazon Basics', laboratory: 'Laboratory 1' },
-  ]);
+  const queryClient = useQueryClient();
+  const { data: usersData = [] } = useTableData("users");
+  const { data: peripheralsData = [] } = useTableData("peripherals");
+  const { data: transactionsData = [] } = useTableData("borrow_transactions");
 
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: 101, itemId: 1, borrowerName: 'Johannes Leo', borrowDate: '2026-04-27', dueDate: '2026-04-30', status: 'Borrowed' },
-    { id: 102, itemId: 2, borrowerName: 'Bernadette M.', borrowDate: '2026-04-25', dueDate: '2026-04-28', status: 'Borrowed' },
-    { id: 103, itemId: 3, borrowerName: 'James Lovell', borrowDate: '2026-04-28', dueDate: '2026-05-01', status: 'Borrowed' },
-    { id: 104, itemId: 4, borrowerName: 'Sarah Chen', borrowDate: '2026-04-26', dueDate: '2026-04-29', status: 'Borrowed' },
-    { id: 105, itemId: 5, borrowerName: 'Michael Torres', borrowDate: '2026-04-20', dueDate: '2026-04-23', returnDate: '2026-04-22', status: 'Returned' },
-    { id: 106, itemId: 6, borrowerName: 'Emma Watson', borrowDate: '2026-04-18', dueDate: '2026-04-21', returnDate: '2026-04-20', status: 'Returned' },
-  ]);
+  const [showModal, setModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"borrowed" | "returned">("borrowed");
+  const [returningId, setReturningId] = useState<number | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState<'borrowing' | 'returning'>('borrowing');
-  const [showBorrowModal, setShowBorrowModal] = useState(false);
-  const [showAssetModal, setShowAssetModal] = useState(false);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [selectedTransactionId, setSelectedTransactionId] = useState<number | null>(null);
-  const [returnDate, setReturnDate] = useState('');
-  
-  const [borrowForm, setBorrowForm] = useState({
-    itemId: '',
-    borrowerName: '',
-    dueDate: '',
-  });
-  const [assetForm, setAssetForm] = useState({
-    assetName: '',
-    model: '',
-    laboratory: '',
-    initialStatus: 'Available',
-    stockQuantity: 1,
-  });
-  const [formError, setFormError] = useState('');
+  // ── A transaction is "borrowed" if remarks is 'borrowed', 'pending', or NULL
+  const isBorrowed = (t: any) =>
+    !t.remarks || t.remarks === "borrowed" || t.remarks === "pending";
+  const isReturned = (t: any) => t.remarks === "returned";
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  // ── Stats ─────────────────────────────────────────────────────────────────
 
-  const filteredByMode = transactions.filter(t => 
-    viewMode === 'borrowing' ? t.status === 'Borrowed' : t.status === 'Returned'
+  // Total inventory = sum of working_count (never changes on borrow)
+  const totalInventory = peripheralsData.reduce(
+    (sum: number, p: any) => sum + (Number(p.working_count) || 0),
+    0,
   );
 
-  const displayedTransactions = filteredByMode
-    .map(t => ({
-      ...t,
-      itemName: items.find(i => i.id === t.itemId)?.name || 'Unknown Item',
-    }))
-    .filter(t => t.borrowerName.toLowerCase().includes(searchTerm.toLowerCase()));
+  // Active borrows = count of non-returned transactions
+  const activeBorrowsList = transactionsData.filter(isBorrowed);
+  const activeBorrows = activeBorrowsList.length;
 
-  const getItemById = (itemId: number) => items.find(i => i.id === itemId);
+  // Build qty map of currently borrowed items
+  const borrowedQtyMap: Record<string, number> = {};
+  activeBorrowsList.forEach((t: any) => {
+    borrowedQtyMap[t.item_name] =
+      (borrowedQtyMap[t.item_name] ?? 0) + (Number(t.quantity) || 1);
+  });
 
-  const totalItems = items.reduce((sum, i) => sum + i.total, 0);
-  const totalAvailable = items.reduce((sum, i) => sum + i.available, 0);
-  const activeBorrows = transactions.filter(t => t.status !== 'Returned').length;
-  const totalReturns = transactions.filter(t => t.status === 'Returned').length;
+  // Available now = working_count minus currently borrowed qty per item
+  const availableNow = peripheralsData.reduce((sum: number, p: any) => {
+    const borrowed = borrowedQtyMap[p.item_name] ?? 0;
+    return sum + Math.max(0, (Number(p.working_count) || 0) - borrowed);
+  }, 0);
 
-  // Open return modal
-  const openReturnModal = (transactionId: number) => {
-    if (userRole !== 'instructor') return;
-    const transaction = transactions.find(t => t.id === transactionId);
-    if (!transaction || transaction.status === 'Returned') return;
-    setSelectedTransactionId(transactionId);
-    setReturnDate(new Date().toISOString().split('T')[0]);
-    setShowReturnModal(true);
+  const completedReturns = transactionsData.filter(isReturned).length;
+
+  // ── Filtering ─────────────────────────────────────────────────────────────
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isOverdue = (expectedDate: string) => {
+    if (!expectedDate) return false;
+    const d = new Date(expectedDate);
+    d.setHours(0, 0, 0, 0);
+    return d < today;
   };
 
-  const confirmReturn = () => {
-    if (selectedTransactionId === null) return;
-    const transaction = transactions.find(t => t.id === selectedTransactionId);
-    if (!transaction || transaction.status === 'Returned') return;
-
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === transaction.itemId
-          ? { ...item, available: Math.min(item.available + 1, item.total) }
-          : item
-      )
+  const displayed = transactionsData
+    .filter((t: any) =>
+      viewMode === "borrowed" ? isBorrowed(t) : isReturned(t),
+    )
+    .filter((t: any) =>
+      (t.borrower_name ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
-    setTransactions(prevTransactions =>
-      prevTransactions.map(t =>
-        t.id === selectedTransactionId 
-          ? { ...t, status: 'Returned', returnDate: returnDate } 
-          : t
-      )
-    );
+  // ── Mark as returned ──────────────────────────────────────────────────────
 
-    const itemName = getItemById(transaction.itemId)?.name;
-    alert(`✅ "${itemName}" has been returned successfully. Return date: ${formatDate(returnDate)}`);
-    setShowReturnModal(false);
-    setSelectedTransactionId(null);
+  const handleMarkReturned = async (t: any) => {
+    setReturningId(t.transaction_id);
+    try {
+      // 1. Mark transaction as returned
+      await updateData("borrow_transactions", t.transaction_id, {
+        remarks: "returned",
+        actual_return_date: new Date().toISOString().split("T")[0],
+      });
+
+      // 2. Add quantity back to peripheral working_count
+      const peripheral = peripheralsData.find(
+        (p: any) => p.item_name === t.item_name,
+      );
+      if (peripheral) {
+        const newCount =
+          (Number(peripheral.working_count) || 0) + (Number(t.quantity) || 1);
+        await updateData("peripherals", peripheral.peripheral_id, {
+          working_count: newCount,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["borrow_transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["peripherals"] });
+    } catch (err) {
+      console.error("Failed to mark as returned:", err);
+    } finally {
+      setReturningId(null);
+    }
   };
 
-  const handleNewBorrow = () => {
-    if (userRole !== 'instructor') return;
-    setBorrowForm({ itemId: '', borrowerName: '', dueDate: '' });
-    setFormError('');
-    setShowBorrowModal(true);
-  };
-
-  const submitBorrow = () => {
-    if (!borrowForm.itemId) {
-      setFormError('Please select an item');
-      return;
-    }
-    if (!borrowForm.borrowerName.trim()) {
-      setFormError('Please enter borrower name');
-      return;
-    }
-    if (!borrowForm.dueDate) {
-      setFormError('Please select due date');
-      return;
-    }
-
-    const itemId = parseInt(borrowForm.itemId);
-    const selectedItem = items.find(i => i.id === itemId);
-    
-    if (!selectedItem) {
-      setFormError('Invalid item selected');
-      return;
-    }
-    if (selectedItem.available <= 0) {
-      setFormError(`"${selectedItem.name}" is currently out of stock. No available units.`);
-      return;
-    }
-
-    const dueDateObj = new Date(borrowForm.dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (dueDateObj < today) {
-      setFormError('Due date cannot be in the past');
-      return;
-    }
-
-    const newTransaction: Transaction = {
-      id: Date.now(),
-      itemId: itemId,
-      borrowerName: borrowForm.borrowerName.trim(),
-      borrowDate: new Date().toISOString().split('T')[0],
-      dueDate: borrowForm.dueDate,
-      status: 'Borrowed',
-    };
-
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === itemId ? { ...item, available: item.available - 1 } : item
-      )
-    );
-
-    setTransactions(prev => [...prev, newTransaction]);
-    setShowBorrowModal(false);
-    alert(`✅ "${selectedItem.name}" borrowed by ${borrowForm.borrowerName}. Due: ${formatDate(borrowForm.dueDate)}`);
-  };
-
-  // --- New Asset Registration (matches screenshot) ---
-  const handleAddAsset = () => {
-    setAssetForm({
-      assetName: '',
-      model: '',
-      laboratory: '',
-      initialStatus: 'Available',
-      stockQuantity: 1,
+  const formatDate = (d: string) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
     });
-    setFormError('');
-    setShowAssetModal(true);
   };
-
-  const submitAsset = () => {
-    if (!assetForm.assetName.trim()) {
-      setFormError('Asset name is required');
-      return;
-    }
-    if (!assetForm.model.trim()) {
-      setFormError('Model is required');
-      return;
-    }
-    if (!assetForm.laboratory.trim()) {
-      setFormError('Please assign a laboratory');
-      return;
-    }
-    if (assetForm.stockQuantity < 1) {
-      setFormError('Stock quantity must be at least 1');
-      return;
-    }
-
-    const newId = Math.max(...items.map(i => i.id), 0) + 1;
-    const quantity = assetForm.stockQuantity;
-    const available = assetForm.initialStatus === 'Available' ? quantity : 0;
-
-    const newItem: Item = {
-      id: newId,
-      name: assetForm.assetName.trim(),
-      total: quantity,
-      available: available,
-      category: 'Misc',
-      model: assetForm.model.trim(),
-      laboratory: assetForm.laboratory.trim(),
-    };
-
-    setItems(prev => [...prev, newItem]);
-    setShowAssetModal(false);
-    alert(`✅ Added ${quantity} new asset(s): ${assetForm.assetName} (${assetForm.model}) to ${assetForm.laboratory} with status "${assetForm.initialStatus}"`);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTransactions(prev => [...prev]);
-    }, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Borrow & Return</h2>
-          <p className="text-xs font-bold text-slate-400">Track movement of lab accessories and equipment</p>
+          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+            Borrow & Return
+          </h2>
+          <p className="text-xs font-bold text-slate-400">
+            Track movement of lab accessories and equipment
+          </p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={handleAddAsset}
-            className="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
-          >
-            <Plus size={18} /> Add New Asset
-          </button>
-          {userRole === 'instructor' && (
-            <button
-              onClick={handleNewBorrow}
-              className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
-            >
-              <Plus size={18} /> New Borrow Entry
-            </button>
-          )}
-        </div>
+        <button
+          onClick={() => setModal(true)}
+          className="bg-indigo-600 text-white px-8 py-4 rounded-md font-black text-xs flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+        >
+          <Plus size={18} /> New Borrow Entry
+        </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="bg-white rounded-md border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Inventory</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{totalItems}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Total Inventory
+              </p>
+              <p className="text-3xl font-black text-slate-800 mt-1">
+                {totalInventory}
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center">
               <Layers className="text-indigo-600" size={24} />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+
+        <div className="bg-white rounded-md border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Available Now</p>
-              <p className="text-3xl font-black text-emerald-600 mt-1">{totalAvailable}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Available Now
+              </p>
+              <p className="text-3xl font-black text-emerald-600 mt-1">
+                {availableNow}
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
               <Package className="text-emerald-600" size={24} />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+
+        <div className="bg-white rounded-md border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Active Borrows</p>
-              <p className="text-3xl font-black text-amber-600 mt-1">{activeBorrows}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Active Borrows
+              </p>
+              <p className="text-3xl font-black text-amber-600 mt-1">
+                {activeBorrows}
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
               <Users className="text-amber-600" size={24} />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+
+        <div className="bg-white rounded-md border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Completed Returns</p>
-              <p className="text-3xl font-black text-slate-800 mt-1">{totalReturns}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Completed Returns
+              </p>
+              <p className="text-3xl font-black text-slate-800 mt-1">
+                {completedReturns}
+              </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
               <Repeat className="text-slate-600" size={24} />
@@ -325,45 +216,49 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ userRole }) => {
         </div>
       </div>
 
-      {/* Main Table with View Toggle */}
-      <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
+      {/* Table */}
+      <div className="bg-white rounded-md border border-slate-200 overflow-hidden shadow-sm">
         <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/30">
           <div className="flex items-center gap-2">
             <ClipboardList className="text-indigo-600" size={18} />
             <span className="font-black text-slate-700 text-[10px] uppercase tracking-widest">
-              {viewMode === 'borrowing' ? 'Borrowing Records' : 'Return History'}
+              {viewMode === "borrowed" ? "Borrowing Records" : "Return History"}
             </span>
-            <span className="ml-2 bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-1 rounded-full">
-              {displayedTransactions.length} {viewMode === 'borrowing' ? 'active' : 'returned'}
+            <span className="ml-2 bg-indigo-100 text-indigo-700 text-[9px] font-black px-2 py-1 rounded-md">
+              {displayed.length}{" "}
+              {viewMode === "borrowed" ? "active" : "returned"}
             </span>
           </div>
+
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <div className="flex bg-slate-100 rounded-xl p-1">
               <button
-                onClick={() => setViewMode('borrowing')}
+                onClick={() => setViewMode("borrowed")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                  viewMode === 'borrowing' 
-                    ? 'bg-white text-indigo-600 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-700'
+                  viewMode === "borrowed"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                <ArrowLeftRight size={12} />
-                Borrowing
+                <ArrowLeftRight size={12} /> Borrowing
               </button>
               <button
-                onClick={() => setViewMode('returning')}
+                onClick={() => setViewMode("returned")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                  viewMode === 'returning' 
-                    ? 'bg-white text-indigo-600 shadow-sm' 
-                    : 'text-slate-500 hover:text-slate-700'
+                  viewMode === "returned"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                <Repeat size={12} />
-                Returning
+                <Repeat size={12} /> Returned
               </button>
             </div>
+
             <div className="relative w-full md:w-72">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <Search
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
               <input
                 type="text"
                 placeholder="Search borrower name..."
@@ -380,313 +275,234 @@ const BorrowReturn: React.FC<BorrowReturnProps> = ({ userRole }) => {
             <thead>
               <tr className="bg-slate-50/50 text-[10px] uppercase font-black text-slate-400 tracking-[0.15em]">
                 <th className="px-8 py-5">Borrower</th>
-                <th className="px-8 py-5">Equipment / Item</th>
+                <th className="px-8 py-5">Item</th>
+                <th className="px-8 py-5">Qty</th>
                 <th className="px-8 py-5">Borrow Date</th>
-                {viewMode === 'returning' && <th className="px-8 py-5">Actual Return Date</th>}
+                <th className="px-8 py-5">Expected Return</th>
+                {viewMode === "returned" && (
+                  <th className="px-8 py-5">Returned On</th>
+                )}
                 <th className="px-8 py-5">Status</th>
-                {userRole === 'instructor' && viewMode === 'borrowing' && <th className="px-8 py-5 text-right">Action</th>}
+                {viewMode === "borrowed" && (
+                  <th className="px-8 py-5 text-right">Action</th>
+                )}
               </tr>
             </thead>
             <tbody className="text-xs font-bold text-slate-600 divide-y divide-slate-50">
-              {displayedTransactions.length === 0 ? (
+              {displayed.length === 0 ? (
                 <tr>
-                  <td colSpan={(() => {
-                    let cols = 4;
-                    if (viewMode === 'returning') cols++;
-                    if (userRole === 'instructor' && viewMode === 'borrowing') cols++;
-                    return cols;
-                  })()} className="px-8 py-16 text-center">
-                    <div className="flex flex-col items-center gap-2 text-slate-400">
-                      <BookOpen size={32} className="opacity-50" />
-                      <p className="text-xs font-bold">
-                        {viewMode === 'borrowing' ? 'No active borrow records' : 'No return records yet'}
-                      </p>
-                      {userRole === 'instructor' && viewMode === 'borrowing' && (
-                        <button onClick={handleNewBorrow} className="mt-2 text-indigo-600 text-[10px] font-black uppercase tracking-wider hover:underline">
-                          + Create new borrow entry
-                        </button>
-                      )}
-                    </div>
+                  <td
+                    colSpan={viewMode === "borrowed" ? 7 : 7}
+                    className="px-8 py-16 text-center text-slate-400 text-xs font-bold"
+                  >
+                    {viewMode === "borrowed"
+                      ? "No active borrow records"
+                      : "No return records yet"}
                   </td>
                 </tr>
               ) : (
-                displayedTransactions.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
-                          <User size={14} />
+                displayed.map((t: any) => {
+                  const overdue =
+                    viewMode === "borrowed" &&
+                    isOverdue(t.expected_return_date);
+                  const isProcessing = returningId === t.transaction_id;
+
+                  return (
+                    <tr
+                      key={t.transaction_id}
+                      className={`hover:bg-slate-50/80 transition-colors group ${
+                        overdue ? "bg-red-50/40" : ""
+                      }`}
+                    >
+                      {/* Borrower */}
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">
+                            <User size={14} />
+                          </div>
+                          <div>
+                            <p className="text-slate-900 font-black">
+                              {t.borrower_name || "—"}
+                            </p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                              ID: {t.instructor_id}
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-slate-900">{t.borrowerName}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2">
-                        <Package size={14} className="text-slate-300" />
-                        {t.itemName}
-                      </div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-2 text-slate-400">
-                        <Calendar size={14} />
-                        {formatDate(t.borrowDate)}
-                      </div>
-                    </td>
-                    {viewMode === 'returning' && (
+                      </td>
+
+                      {/* Item */}
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-2">
+                          <Package
+                            size={14}
+                            className="text-slate-300 flex-shrink-0"
+                          />
+                          <span>{t.item_name || "—"}</span>
+                        </div>
+                      </td>
+
+                      {/* Qty */}
+                      <td className="px-8 py-5">
+                        <span className="bg-slate-100 text-slate-700 px-2 py-1 rounded font-black text-xs">
+                          {t.quantity ?? 1}
+                        </span>
+                      </td>
+
+                      {/* Borrow Date */}
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-2 text-slate-400">
                           <Calendar size={14} />
-                          {t.returnDate ? formatDate(t.returnDate) : '—'}
+                          {formatDate(t.borrow_date)}
                         </div>
                       </td>
-                    )}
-                    <td className="px-8 py-5">
-                      {viewMode === 'borrowing' ? (
-                        <span className="px-4 py-1.5 rounded-full text-[9px] uppercase font-black tracking-tighter bg-indigo-100 text-indigo-600 flex items-center gap-1 w-fit">
-                          <Clock size={10} /> Returning
-                        </span>
-                      ) : (
-                        <span className="px-4 py-1.5 rounded-full text-[9px] uppercase font-black tracking-tighter bg-emerald-100 text-emerald-600 flex items-center gap-1 w-fit">
-                          <CheckCircle size={10} /> Returned
-                        </span>
-                      )}
-                    </td>
-                    {userRole === 'instructor' && viewMode === 'borrowing' && (
-                      <td className="px-8 py-5 text-right">
-                        <button
-                          onClick={() => openReturnModal(t.id)}
-                          className="flex items-center gap-2 ml-auto text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 px-4 py-2 rounded-xl group-hover:bg-indigo-600 group-hover:text-white"
+
+                      {/* Expected Return */}
+                      <td className="px-8 py-5">
+                        <div
+                          className={`flex items-center gap-2 ${
+                            overdue ? "text-red-500" : "text-slate-400"
+                          }`}
                         >
-                          <RotateCcw size={14} />
-                          <span className="text-[10px] uppercase font-black">Return Item</span>
-                        </button>
+                          {overdue ? (
+                            <AlertTriangle size={14} />
+                          ) : (
+                            <Calendar size={14} />
+                          )}
+                          {formatDate(t.expected_return_date)}
+                          {overdue && (
+                            <span className="text-[8px] font-black uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded">
+                              Overdue
+                            </span>
+                          )}
+                        </div>
                       </td>
-                    )}
-                  </tr>
-                ))
+
+                      {/* Returned On — only in returned view */}
+                      {viewMode === "returned" && (
+                        <td className="px-8 py-5">
+                          <div className="flex items-center gap-2 text-slate-400">
+                            <Calendar size={14} />
+                            {formatDate(t.actual_return_date)}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Status */}
+                      <td className="px-8 py-5">
+                        {isReturned(t) ? (
+                          <span className="px-3 py-1.5 rounded-md text-[9px] uppercase font-black bg-emerald-100 text-emerald-600 flex items-center gap-1 w-fit">
+                            <CheckCircle size={10} /> Returned
+                          </span>
+                        ) : overdue ? (
+                          <span className="px-3 py-1.5 rounded-md text-[9px] uppercase font-black bg-red-100 text-red-600 flex items-center gap-1 w-fit">
+                            <AlertTriangle size={10} /> Overdue
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-md text-[9px] uppercase font-black bg-amber-100 text-amber-600 flex items-center gap-1 w-fit">
+                            <Clock size={10} /> Borrowed
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Action */}
+                      {viewMode === "borrowed" && (
+                        <td className="px-8 py-5 text-right">
+                          <button
+                            onClick={() => handleMarkReturned(t)}
+                            disabled={isProcessing}
+                            className="flex items-center gap-2 ml-auto text-indigo-600 hover:text-white transition-colors bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-600 disabled:opacity-50 text-[10px] uppercase font-black"
+                          >
+                            {isProcessing ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <Repeat size={14} />
+                            )}
+                            {isProcessing ? "Saving..." : "Mark Returned"}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Inventory Status Summary */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      {/* Inventory summary */}
+      <div className="bg-white rounded-md border border-slate-200 p-6 shadow-sm">
         <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
           <Package size={14} /> Real-time Inventory Status
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {items.map((item) => (
-            <div key={item.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-              <div>
-                <p className="font-black text-slate-800 text-sm">{item.name}</p>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                  {item.model} • {item.laboratory}
-                </p>
+          {peripheralsData.map((p: any) => {
+            const borrowed = borrowedQtyMap[p.item_name] ?? 0;
+            const available = Math.max(
+              0,
+              (Number(p.working_count) || 0) - borrowed,
+            );
+            return (
+              <div
+                key={p.peripheral_id}
+                className="flex justify-between items-center p-3 bg-slate-50 rounded-xl"
+              >
+                <div>
+                  <p className="font-black text-slate-800 text-sm">
+                    {p.item_name}
+                  </p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                    {p.brand}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-black text-slate-800">
+                    {available}
+                    <span className="text-xs font-bold text-slate-400">
+                      /{Number(p.working_count) || 0}
+                    </span>
+                  </p>
+                  <p className="text-[9px] font-bold text-slate-400">
+                    available
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-slate-800">{item.available}<span className="text-xs font-bold text-slate-400">/{item.total}</span></p>
-                <p className="text-[9px] font-bold text-slate-400">available</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* New Borrow Modal */}
-      {showBorrowModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Plus className="text-indigo-600" size={20} />
-                <h3 className="font-black text-slate-800 text-lg">New Borrow Entry</h3>
-              </div>
-              <button onClick={() => setShowBorrowModal(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              {formError && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2">
-                  <AlertCircle size={14} className="text-rose-600" />
-                  <p className="text-rose-700 text-xs font-bold">{formError}</p>
-                </div>
-              )}
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Select Equipment</label>
-                <select
-                  value={borrowForm.itemId}
-                  onChange={(e) => setBorrowForm({ ...borrowForm, itemId: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Choose an item...</option>
-                  {items.map(item => (
-                    <option key={item.id} value={item.id} disabled={item.available === 0}>
-                      {item.name} ({item.model}) - {item.available} available {item.available === 0 ? '(Out of stock)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Borrower Name</label>
-                <input
-                  type="text"
-                  value={borrowForm.borrowerName}
-                  onChange={(e) => setBorrowForm({ ...borrowForm, borrowerName: e.target.value })}
-                  placeholder="Full name"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Due Date (Expected Return)</label>
-                <input
-                  type="date"
-                  value={borrowForm.dueDate}
-                  min={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setBorrowForm({ ...borrowForm, dueDate: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[9px] text-slate-400 mt-1">Recommended: 3-7 days from today</p>
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 flex gap-3">
-              <button onClick={() => setShowBorrowModal(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button onClick={submitBorrow} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
-                Confirm Borrow
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Return Date Modal */}
-      {showReturnModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="text-indigo-600" size={20} />
-                <h3 className="font-black text-slate-800 text-lg">Confirm Return</h3>
-              </div>
-              <button onClick={() => setShowReturnModal(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Actual Return Date</label>
-                <input
-                  type="date"
-                  value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <p className="text-[9px] text-slate-400 mt-1">Select the date when the item was actually returned.</p>
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 flex gap-3">
-              <button onClick={() => setShowReturnModal(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button onClick={confirmReturn} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs uppercase tracking-wider hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
-                Confirm Return
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Register New Asset Modal - matches screenshot exactly */}
-      {showAssetModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <HardDrive className="text-emerald-600" size={20} />
-                <h3 className="font-black text-slate-800 text-lg">Register New Asset(s)</h3>
-              </div>
-              <button onClick={() => setShowAssetModal(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={18} className="text-slate-400" />
-              </button>
-            </div>
-            <div className="p-6 space-y-5">
-              {formError && (
-                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-center gap-2">
-                  <AlertCircle size={14} className="text-rose-600" />
-                  <p className="text-rose-700 text-xs font-bold">{formError}</p>
-                </div>
-              )}
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">ASSET NAME</label>
-                <input
-                  type="text"
-                  value={assetForm.assetName}
-                  onChange={(e) => setAssetForm({ ...assetForm, assetName: e.target.value })}
-                  placeholder="e.g. Dell, Logitech, HP"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">MODEL</label>
-                <input
-                  type="text"
-                  value={assetForm.model}
-                  onChange={(e) => setAssetForm({ ...assetForm, model: e.target.value })}
-                  placeholder="e.g. Optiplex 7080, G-Pro Mouse"
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">ASSIGN TO LABORATORY</label>
-                <select
-                  value={assetForm.laboratory}
-                  onChange={(e) => setAssetForm({ ...assetForm, laboratory: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">Select laboratory</option>
-                  <option value="Laboratory 1">Laboratory 1</option>
-                  <option value="Laboratory 2">Laboratory 2</option>
-                  <option value="Laboratory 3">Laboratory 3</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">INITIAL STATUS</label>
-                <select
-                  value={assetForm.initialStatus}
-                  onChange={(e) => setAssetForm({ ...assetForm, initialStatus: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="Available">Available</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Broken">Broken</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">STOCK QUANTITY</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={assetForm.stockQuantity}
-                  onChange={(e) => setAssetForm({ ...assetForm, stockQuantity: parseInt(e.target.value) || 1 })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-                <p className="text-[9px] text-slate-400 mt-1">Creates this many identical assets with the selected status.</p>
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 flex gap-3">
-              <button onClick={() => setShowAssetModal(false)} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
-              <button onClick={submitAsset} className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-black text-xs uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200">
-                Save Asset(s)
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Add Modal */}
+      {showModal && (
+        <AddModal
+          fields={borrowFields(usersData, peripheralsData)}
+          table="borrow_transactions"
+          onClose={() => setModal(false)}
+          onSuccess={async (submittedData?: any) => {
+            // Deduct quantity from peripheral working_count on borrow
+            if (submittedData?.item_name) {
+              const peripheral = peripheralsData.find(
+                (p: any) => p.item_name === submittedData.item_name,
+              );
+              if (peripheral) {
+                const qty = Number(submittedData.quantity) || 1;
+                const newCount = Math.max(
+                  0,
+                  (Number(peripheral.working_count) || 0) - qty,
+                );
+                await updateData("peripherals", peripheral.peripheral_id, {
+                  working_count: newCount,
+                });
+              }
+            }
+            queryClient.invalidateQueries({
+              queryKey: ["borrow_transactions"],
+            });
+            queryClient.invalidateQueries({ queryKey: ["peripherals"] });
+            setModal(false);
+          }}
+        />
       )}
     </div>
   );
