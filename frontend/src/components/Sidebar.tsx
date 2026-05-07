@@ -1,3 +1,4 @@
+// Sidebar.tsx
 import React from "react";
 import {
   LayoutDashboard,
@@ -10,6 +11,7 @@ import {
   History,
   LogOut,
   FileBarChart,
+  Settings, // <-- added
 } from "lucide-react";
 
 interface SidebarProps {
@@ -89,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       id: "borrow",
       label: "Borrow & Return",
       icon: <ClipboardList size={20} />,
-      roles: ["instructor"],
+      roles: ["instructor", "admin"],
     },
     {
       id: "damage",
@@ -146,7 +148,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
 
-          {/* Text - just hide/show with opacity, no width changes */}
           <div
             className={`flex flex-col transition-opacity duration-300 ${expanded ? "opacity-100 delay-75" : "opacity-0 hidden"}`}
           >
@@ -173,25 +174,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         ))}
       </nav>
-
-      {/* Footer: Logout */}
-      <div className="p-4 pb-20">
-        <button
-          onClick={() => onSelect("logout")}
-          className={`w-full flex items-center rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-600 hover:text-white transition-all duration-300 shadow-sm ${
-            expanded
-              ? "gap-3 px-4 py-3.5 justify-start"
-              : "justify-center py-3.5"
-          }`}
-        >
-          <LogOut size={20} className="shrink-0" />
-          <span
-            className={`text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${expanded ? "w-auto opacity-100" : "w-0 opacity-0 absolute"}`}
-          >
-            Logout
-          </span>
-        </button>
-      </div>
     </aside>
   );
 };

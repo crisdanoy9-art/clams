@@ -1,49 +1,131 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Monitor,
-  Plus,
-  Wrench,
-  PackageCheck,
-  HandHelping,
-  CircleDot,
-  Users,
-  Clock,
-  AlertTriangle,
   CheckCircle,
-  ArrowRight,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Wrench,
+  LogIn,
+  Trash2,
+  PenLine,
+  PackagePlus,
+  UserPlus,
+  AlertCircle,
+  History,
+  Database,
 } from "lucide-react";
+import { useTableData } from "../lib/hooks/useTableData";
 
 interface DashboardProps {
   userRole: "admin" | "instructor";
 }
 
-const DashboardProp: React.FC<DashboardProps> = ({}) => {
-  // Calculate realistic progress percentages
-  const totalPcs = 86;
-  const availableUnits = 74;
-  const borrowedItems = 8;
-  const damageReports = 4;
+const getIconAndColor = (action: string, table: string) => {
+  const a = action.toLowerCase();
+  const t = (table || "").toLowerCase();
 
-  const availablePercent = (availableUnits / totalPcs) * 100;
-  const borrowedPercent = (borrowedItems / totalPcs) * 100;
-  const damagePercent = (damageReports / totalPcs) * 100;
+  if (a.includes("login"))
+    return { icon: <LogIn size={14} />, color: "bg-green-50 text-green-500" };
+  if (a.includes("delete") || a.includes("removed"))
+    return { icon: <Trash2 size={14} />, color: "bg-rose-50 text-rose-500" };
+  if (a.includes("update") || a.includes("edit"))
+    return { icon: <PenLine size={14} />, color: "bg-amber-50 text-amber-500" };
+  if (a.includes("insert") || a.includes("add") || a.includes("create"))
+    return {
+      icon: <PackagePlus size={14} />,
+      color: "bg-indigo-50 text-indigo-500",
+    };
+  if (t.includes("user"))
+    return {
+      icon: <UserPlus size={14} />,
+      color: "bg-purple-50 text-purple-500",
+    };
+  if (t.includes("damage"))
+    return {
+      icon: <AlertCircle size={14} />,
+      color: "bg-rose-50 text-rose-500",
+    };
+  if (t.includes("borrow"))
+    return { icon: <History size={14} />, color: "bg-blue-50 text-blue-500" };
+
+  return { icon: <Database size={14} />, color: "bg-slate-100 text-slate-500" };
+};
+
+const formatTime = (timestamp: string) => {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+interface DashboardProps {
+  userRole: "admin" | "instructor";
+  onNavigateToLogs: () => void;
+}
+const DashboardProp: React.FC<DashboardProps> = ({
+  userRole,
+  onNavigateToLogs,
+}) => {
+  const { data: labData } = useTableData("laboratories");
+  const { data: equipmentData } = useTableData("equipment");
+  const { data: logsData, isLoading } = useTableData("activity_logs", {
+    refetchInterval: 3000,
+  });
+
+  const [expandedLabId, setExpandedLabId] = useState<number | string | null>(
+    null,
+  );
+
+  const activeEquipment =
+    equipmentData?.filter((e: any) => !e.is_deleted) ?? [];
+  const totalPcs = activeEquipment.length;
+  const availableUnits = activeEquipment.filter(
+    (e: any) => e.status === "available",
+  ).length;
+  const issueUnits = activeEquipment.filter(
+    (e: any) => e.status === "unavailable",
+  ).length;
+  const availablePercent =
+    totalPcs === 0 ? 0 : (availableUnits / totalPcs) * 100;
+  const issuePercent = totalPcs === 0 ? 0 : (issueUnits / totalPcs) * 100;
+
+  const logs: any[] = logsData ?? [];
+  const sortedLogs = [...logs].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+  const recentLogs = sortedLogs.slice(0, 3);
+
+  const getLabEquipment = (labId: number | string) =>
+    activeEquipment.filter((e: any) => e.lab_id === labId);
+
+  const toggleExpand = (labId: number | string) => {
+    setExpandedLabId((prevId) => (prevId === labId ? null : labId));
+  };
+
+  const goToLogs = () => {
+    localStorage.setItem("currentView", "logs");
+    window.dispatchEvent(new Event("storage"));
+  };
 
   return (
     <div className="flex min-h-screen bg-[#f8fafc] font-sans text-slate-700">
-      {/* Main Content */}
       <main className="flex-1 p-8 overflow-y-auto">
-        <header className="flex justify-between items-start mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-          </div>
+        <header className="mb-8">
+          <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            CLAMS / Computer Laboratory Asset Management System
+          </p>
         </header>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <StatCard
             title="TOTAL PCs"
             value={totalPcs.toString()}
-            subtitle="Across all 3 labs"
+            subtitle="Across all labs"
             icon={<Monitor className="text-indigo-500" strokeWidth={1.8} />}
             progressColor="bg-indigo-500"
             progressWidth={100}
@@ -63,93 +145,225 @@ const DashboardProp: React.FC<DashboardProps> = ({}) => {
             iconBg="bg-emerald-50"
           />
           <StatCard
-            title="BORROWED ITEMS"
-            value={borrowedItems.toString()}
-            subtitle="Active transactions"
-            icon={<HandHelping className="text-amber-500" strokeWidth={1.8} />}
-            progressColor="bg-amber-400"
-            progressWidth={borrowedPercent}
-            bgColor="bg-white"
-            iconBg="bg-amber-50"
-          />
-          <StatCard
-            title="DAMAGE REPORTS"
-            value={damageReports.toString()}
-            subtitle="Pending resolution"
-            icon={<AlertTriangle className="text-rose-500" strokeWidth={1.8} />}
+            title="UNITS WITH ISSUES"
+            value={issueUnits.toString()}
+            subtitle="Unavailable / damaged"
+            icon={<Wrench className="text-rose-500" strokeWidth={1.8} />}
             progressColor="bg-rose-400"
-            progressWidth={damagePercent}
+            progressWidth={issuePercent}
             bgColor="bg-white"
             iconBg="bg-rose-50"
             isWarning
           />
         </div>
 
-        {/* Laboratory Overview - full width */}
+        {/* Laboratory Overview */}
         <div className="mb-8">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
             Laboratory Overview
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <LabCard
-              name="Lab 1"
-              room="Room 101"
-              pcs={30}
-              avail={28}
-              issues={2}
-            />
-            <LabCard
-              name="Lab 2"
-              room="Room 102"
-              pcs={28}
-              avail={24}
-              issues={4}
-            />
-            <LabCard
-              name="Lab 3"
-              room="Room 103"
-              pcs={28}
-              avail={22}
-              issues={6}
-            />
+            {labData && labData.length > 0 ? (
+              labData.map((lab: any) => {
+                const thisLabEquipment = getLabEquipment(lab.lab_id);
+                const totalCount = thisLabEquipment.length;
+                const availCount = thisLabEquipment.filter(
+                  (e: any) => e.status === "available",
+                ).length;
+                const issueCount = thisLabEquipment.filter(
+                  (e: any) => e.status === "unavailable",
+                ).length;
+                const isExpanded = expandedLabId === lab.lab_id;
+
+                return (
+                  <div
+                    key={lab.lab_id}
+                    className="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden flex flex-col h-fit"
+                  >
+                    <div
+                      className="p-4 cursor-pointer hover:bg-slate-50 transition-colors flex items-center justify-between"
+                      onClick={() => toggleExpand(lab.lab_id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-sm">
+                          {lab.lab_name?.charAt(0).toUpperCase() || "L"}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-700">
+                            {lab.lab_name}
+                          </h4>
+                          <p className="text-[10px] text-slate-400">
+                            {lab.room_number || "No room"} ·{" "}
+                            {lab.building || "No building"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-indigo-100 px-2 py-1 rounded-full text-indigo-700">
+                          {totalCount} total
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp size={18} className="text-slate-400" />
+                        ) : (
+                          <ChevronDown size={18} className="text-slate-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="px-4 pb-3 grid grid-cols-2 gap-2 text-center text-xs">
+                      <div className="bg-emerald-50 rounded-md p-2">
+                        <p className="text-emerald-600 font-bold">
+                          {availCount}
+                        </p>
+                        <p className="text-[10px] text-slate-500">Available</p>
+                      </div>
+                      <div className="bg-rose-50 rounded-md p-2">
+                        <p className="text-rose-600 font-bold">{issueCount}</p>
+                        <p className="text-[10px] text-slate-500">Issues</p>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-zinc-200 bg-slate-50/50 p-3">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">
+                          Assets in this lab
+                        </p>
+                        {thisLabEquipment.length === 0 ? (
+                          <p className="text-[10px] text-slate-400 text-center py-4">
+                            No equipment registered
+                          </p>
+                        ) : (
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {thisLabEquipment.map((e: any) => (
+                              <div
+                                key={e.equipment_id}
+                                className="bg-white rounded-md p-2 flex items-center justify-between shadow-sm border border-zinc-200"
+                              >
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    {e.item_name} · {e.brand} {e.model}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    {e.asset_tag}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                    e.status === "available"
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : "bg-rose-100 text-rose-700"
+                                  }`}
+                                >
+                                  {e.status === "available"
+                                    ? "Available"
+                                    : "Issue"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-full text-center py-12 bg-white rounded-md border border-slate-200">
+                <Monitor size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500">
+                  No laboratories added yet.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Recent Activity - below labs, full width */}
+        {/* Recent Activity */}
         <div className="mb-8">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-            Recent Activity
-          </h3>
-          <div className="bg-white rounded-md  border border-slate-200 shadow-sm p-5 space-y-5">
-            <ActivityItem
-              icon={<HandHelping className="w-4 h-4 text-indigo-500" />}
-              text="Keyboard borrowed from Lab 1 by J. Santos"
-              time="Today 13:42 PM"
-            />
-            <ActivityItem
-              icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
-              text="Damage report filed - Monitor #14, lab 3"
-              time="Today 10:15 PM"
-            />
-            <ActivityItem
-              icon={<Monitor className="w-4 h-4 text-slate-500" />}
-              text="Equipment record updated - Dell OptiPlex, Lab 1"
-              time="Yesterday 02:39 PM"
-            />
-            <ActivityItem
-              icon={<Users className="w-4 h-4 text-emerald-500" />}
-              text="New instructor account created"
-              time="Yesterday 02:39 PM"
-            />
-            <ActivityItem
-              icon={<PackageCheck className="w-4 h-4 text-amber-500" />}
-              text="Headset returned - Lab 1 transaction #TXN-041"
-              time="Apr 26 04:10 PM"
-            />
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Recent Activity
+            </h3>
+            {sortedLogs.length > 3 && (
+              <button
+                onClick={onNavigateToLogs}
+                className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+              >
+                View More →
+              </button>
+            )}
           </div>
+
+          {isLoading ? (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
+              <Clock
+                size={28}
+                className="mx-auto text-slate-300 mb-2 animate-pulse"
+              />
+              <p className="text-sm text-slate-400">Loading activity...</p>
+            </div>
+          ) : recentLogs.length === 0 ? (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm p-8 text-center">
+              <Clock size={28} className="mx-auto text-slate-300 mb-2" />
+              <p className="text-sm text-slate-500">
+                No recent activity to show.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-md border border-slate-200 shadow-sm divide-y divide-slate-100">
+              {recentLogs.map((log: any) => {
+                const { icon, color } = getIconAndColor(
+                  log.action,
+                  log.table_affected ?? "",
+                );
+                return (
+                  <div
+                    key={log.log_id}
+                    className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className={`p-2 rounded-md shrink-0 ${color}`}>
+                      {icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center mb-0.5">
+                        <p className="text-xs font-black text-slate-800 uppercase">
+                          {log.action}
+                        </p>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                          {formatTime(log.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-500">
+                        <span className="text-indigo-600">
+                          {log.user_id ?? "System"}
+                        </span>
+                        {log.table_affected && (
+                          <>
+                            {" "}
+                            —{" "}
+                            <span className="text-slate-700">
+                              {log.table_affected}
+                            </span>
+                          </>
+                        )}
+                        {log.record_id && (
+                          <>
+                            {" "}
+                            ·{" "}
+                            <span className="text-slate-700">
+                              #{log.record_id}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Footer */}
         <footer className="border-t border-slate-200 pt-6 mt-4 text-center text-xs text-slate-400">
           <p>
             © 2026 CLAMS - Computer Laboratory Asset Management System. All
@@ -161,7 +375,6 @@ const DashboardProp: React.FC<DashboardProps> = ({}) => {
   );
 };
 
-/* Updated StatCard with dynamic progress width */
 const StatCard: React.FC<{
   title: string;
   value: string;
@@ -205,67 +418,4 @@ const StatCard: React.FC<{
   </div>
 );
 
-/* LabCard with modern subtle styling */
-const LabCard: React.FC<{
-  name: string;
-  room: string;
-  pcs: number;
-  avail: number;
-  issues: number;
-}> = ({ name, room, pcs, avail, issues }) => (
-  <div className="bg-white p-5 rounded-md border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex justify-between items-center mb-6">
-      <div>
-        <h4 className="font-bold text-slate-800">{name}</h4>
-        <p className="text-[11px] text-slate-400 font-medium mt-0.5">{room}</p>
-      </div>
-      <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-        <CircleDot className="text-emerald-500 w-2.5 h-2.5 fill-emerald-500" />
-        <span className="text-[10px] font-bold text-emerald-600 uppercase">
-          Online
-        </span>
-      </div>
-    </div>
-    <div className="flex justify-between text-center border-t border-slate-100 pt-4">
-      <div>
-        <p className="text-xl font-bold text-slate-800">{pcs}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          PCS
-        </p>
-      </div>
-      <div>
-        <p className="text-xl font-bold text-emerald-600">{avail}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          Available
-        </p>
-      </div>
-      <div>
-        <p className="text-xl font-bold text-rose-500">{issues}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-          Issues
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
-/* ActivityItem with colored icons and cleaner layout */
-const ActivityItem: React.FC<{
-  icon: React.ReactNode;
-  text: string;
-  time: string;
-}> = ({ icon, text, time }) => (
-  <div className="flex gap-3 group">
-    <div className="mt-0.5">{icon}</div>
-    <div className="flex-1 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-      <p className="text-sm font-medium text-slate-700 leading-snug">{text}</p>
-      <div className="flex items-center gap-1 mt-1">
-        <Clock size={10} className="text-slate-400" />
-        <p className="text-[11px] text-slate-400">{time}</p>
-      </div>
-    </div>
-  </div>
-);
-
 export default DashboardProp;
-

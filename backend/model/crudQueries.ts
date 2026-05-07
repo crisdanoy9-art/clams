@@ -8,14 +8,36 @@ const allowedTables = [
   "peripherals",
   "borrow_transactions",
   "damage_reports",
+  "activity_logs",
 ];
 
 const validateTable = (table: string) => {
   if (!allowedTables.includes(table)) throw new Error("Invalid table");
 };
 
+export const getLabsWithStats = async () => {
+  const result = await pool.query(`
+    SELECT
+      l.*,
+      COUNT(dr.report_id) FILTER (WHERE dr.status NOT IN ('resolved', 'closed'))::int AS damaged_stations,
+      l.total_stations - COUNT(dr.report_id) FILTER (WHERE dr.status NOT IN ('resolved', 'closed'))::int AS available_stations
+    FROM clams.laboratories l
+    LEFT JOIN clams.damage_reports dr ON dr.lab_id = l.lab_id
+    GROUP BY l.lab_id
+    ORDER BY l.lab_id
+  `);
+  return result.rows;
+};
+
 export const getAll = async (table: string) => {
   validateTable(table);
+  if (table === "laboratories") return getLabsWithStats();
+  if (table === "activity_logs") {
+    const result = await pool.query(
+      `SELECT * FROM clams.activity_logs ORDER BY created_at DESC`,
+    );
+    return result.rows;
+  }
   const result = await pool
     .query(`SELECT * FROM clams.${table} WHERE is_deleted = FALSE`)
     .catch(() => pool.query(`SELECT * FROM clams.${table}`));
@@ -33,6 +55,17 @@ export const getOne = async (table: string, id: string, idCol: string) => {
 
 export const insertOne = async (table: string, data: Record<string, any>) => {
   validateTable(table);
+
+  // Auto-set borrow_date and remarks for borrow_transactions
+  if (table === "borrow_transactions") {
+    if (!data.borrow_date) {
+      data.borrow_date = new Date().toISOString().split("T")[0];
+    }
+    if (!data.remarks) {
+      data.remarks = "borrowed";
+    }
+  }
+
   const columns = Object.keys(data).join(", ");
   const values = Object.values(data);
   const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
