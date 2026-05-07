@@ -4,9 +4,17 @@ import crud from "./routes/crud";
 import fs from "fs";
 import path from "path";
 import { verifyToken } from "./middleware/jwt";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+app.use(
+  cors({
+    origin: "http://localhost:5173", // your frontend URL
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // add this too
