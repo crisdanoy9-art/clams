@@ -41,15 +41,15 @@ export const addData = async (table: string, data: Record<string, any>) => {
     headers["Content-Type"] = "application/json";
   }
 
-  console.log("📤 addData called with:", { table, payload, headers });
+  console.log("addData called with:", { table, payload, headers });
 
   try {
     const res = await axios.post(`${BASE_URL}/${table}`, payload, { headers });
-    console.log("✅ addData success:", res.data);
+    console.log("addData success:", res.data);
     return res.data;
   } catch (error: any) {
     debugger; // PAUSES HERE – inspect `error`
-    console.error("❌ addData failed:");
+    console.error(" addData failed:");
     console.error("  URL:", `${BASE_URL}/${table}`);
     console.error("  Payload:", payload);
     console.error("  Status:", error.response?.status);
@@ -92,7 +92,7 @@ export const updateData = async (
   } catch (error: any) {
     debugger;
     console.error(
-      `❌ updateData failed for ${table}/${id}:`,
+      `updateData failed for ${table}/${id}:`,
       error.response?.data,
     );
     throw error;
@@ -108,7 +108,7 @@ export const deleteData = async (table: string, id: string | number) => {
   } catch (error: any) {
     debugger;
     console.error(
-      `❌ deleteData failed for ${table}/${id}:`,
+      ` deleteData failed for ${table}/${id}:`,
       error.response?.data,
     );
     throw error;
