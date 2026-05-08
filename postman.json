@@ -1,0 +1,89 @@
+[
+  {
+    "peripheral_id": 1,
+    "item_name": "Mouse",
+    "brand": "Logitech",
+    "lab": "Computer Lab 1",
+    "working_count": 38,
+    "damaged_count": 4
+  },
+  {
+    "peripheral_id": 2,
+    "item_name": "Keyboard",
+    "brand": "Logitech",
+    "lab": "Computer Lab 1",
+    "working_count": 36,
+    "damaged_count": 5
+  },
+  {
+    "peripheral_id": 3,
+    "item_name": "Mouse",
+    "brand": "Logitech",
+    "lab": "Computer Lab 2",
+    "working_count": 30,
+    "damaged_count": 6
+  },
+  {
+    "peripheral_id": 4,
+    "item_name": "HDMI Cable",
+    "brand": "Generic",
+    "lab": "Computer Lab 1",
+    "working_count": 15,
+    "damaged_count": 2
+  },
+
+  //
+
+  {
+    "equipment_id": 1,
+    "asset_tag": "COMP-LAB1-001",
+    "item_name": "Desktop PC",
+    "category": "Computer Unit",
+    "brand": "Dell",
+    "model": "OptiPlex 7090",
+    "serial_number": "DL-SN-00001",
+    "specs": {
+      "cpu": "Intel i5-10400",
+      "ram": "8GB DDR4",
+      "storage": "512GB SSD",
+      "os": "Windows 11 Pro"
+    },
+    "lab": "Computer Lab 1",
+    "status": "working",
+    "purchase_date": "2022-06-15"
+  },
+  {
+    "equipment_id": 2,
+    "asset_tag": "COMP-LAB1-002",
+    "item_name": "Desktop PC",
+    "category": "Computer Unit",
+    "brand": "Dell",
+    "model": "OptiPlex 7090",
+    "serial_number": "DL-SN-00002",
+    "specs": {
+      "cpu": "Intel i5-10400",
+      "ram": "8GB DDR4",
+      "storage": "512GB SSD",
+      "os": "Windows 11 Pro"
+    },
+    "lab": "Computer Lab 1",
+    "status": "for_repair",
+    "purchase_date": "2022-06-15"
+  },
+  {
+    "equipment_id": 3,
+    "asset_tag": "PROJ-LAB1-001",
+    "item_name": "Projector",
+    "category": "Projector",
+    "brand": "Epson",
+    "model": "EB-X51",
+    "serial_number": "EP-SN-10021",
+    "specs": {
+      "brightness": "3600 lumens",
+      "resolution": "XGA 1024x768"
+    },
+    "lab": "Computer Lab 1",
+    "status": "working",
+    "purchase_date": "2021-03-10"
+  }
+]

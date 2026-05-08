@@ -1,117 +1,83 @@
-export const EquipmentFields = (
-  categoryOptions: { value: string | number; label: string }[] = [],
-  labOptions: { value: string | number; label: string }[] = [],
-  peripherals: any[] = [],
-) => {
-  const getStockOptions = (keyword: string) => {
-    return peripherals
-      .filter((p) => {
-        const itemName = p.item_name?.toLowerCase() || "";
-        const brand = p.brand?.toLowerCase() || "";
-        const searchKey = keyword.toLowerCase();
-        return itemName.includes(searchKey) || brand.includes(searchKey);
-      })
-      .map((p) => ({
-        // Value is a nested object so when stored it becomes { value: "...", status: "ok" }
-        value: JSON.stringify({
-          value: `${p.brand} ${p.item_name}`,
-          status: "ok",
-        }),
-        label: `${p.item_name} — ${p.brand} (${p.working_count} available)`,
-      }));
-  };
-
-  return [
-    {
-      name: "item_name",
-      label: "Unit Designation",
-      type: "text",
-      placeholder: "e.g., Station-01",
-    },
-    {
-      name: "asset_tag",
-      label: "Asset Tag",
-      type: "text",
-      placeholder: "CCS-PC-2026-001",
-    },
-    {
-      name: "brand",
-      label: "System Brand",
-      type: "text",
-      placeholder: "e.g., Custom Build, Dell, HP",
-    },
-    {
-      name: "model",
-      label: "System Model",
-      type: "text",
-      placeholder: "e.g., OptiPlex 7080",
-    },
-    {
-      name: "specs",
-      label: "Hardware Configuration (Stored as JSONB)",
-      type: "group",
-      fields: [
-        {
-          name: "cpu",
-          label: "Processor",
-          type: "select",
-          options: getStockOptions("cpu"),
-          placeholder: "Select CPU from Stock",
-        },
-        {
-          name: "ram",
-          label: "Memory",
-          type: "select",
-          options: getStockOptions("ram"),
-          placeholder: "Select RAM from Stock",
-        },
-        {
-          name: "storage",
-          label: "Storage Device",
-          type: "select",
-          options: [...getStockOptions("ssd"), ...getStockOptions("hdd")],
-          placeholder: "Select Storage",
-        },
-        {
-          name: "keyboard",
-          label: "Keyboard Model",
-          type: "select",
-          options: getStockOptions("keyboard"),
-          placeholder: "Select Keyboard",
-        },
-        {
-          name: "mouse",
-          label: "Mouse Model",
-          type: "select",
-          options: getStockOptions("mouse"),
-          placeholder: "Select Mouse",
-        },
-      ],
-    },
-    {
-      name: "category_id",
-      label: "Category",
-      type: "select",
-      options: categoryOptions,
-      placeholder: "Select Type",
-    },
-    {
-      name: "lab_id",
-      label: "Location",
-      type: "select",
-      options: labOptions,
-      placeholder: "Assign to Lab",
-    },
-    {
-      name: "status",
-      label: "Status",
-      type: "select",
-      options: [
-        { value: "available", label: "Operational" },
-        { value: "unavailable", label: "Maintenance" },
-        { value: "broken", label: "Broken" },
-      ],
-      placeholder: "Select Status",
-    },
-  ];
-};
+export const EquipmentFields = [
+  {
+    name: "asset_tag",
+    label: "Asset Tag",
+    type: "text" as const,
+    placeholder: "e.g., COMP-LAB1-001",
+  },
+  {
+    name: "item_name",
+    label: "Item Name",
+    type: "text" as const,
+    placeholder: "e.g., Desktop PC",
+  },
+  {
+    name: "category_id",
+    label: "Category",
+    type: "select" as const,
+  },
+  {
+    name: "lab_id",
+    label: "Laboratory",
+    type: "select" as const,
+  },
+  {
+    name: "brand",
+    label: "Brand",
+    type: "text" as const,
+    placeholder: "e.g., Dell",
+  },
+  {
+    name: "model",
+    label: "Model",
+    type: "text" as const,
+    placeholder: "e.g., OptiPlex 7090",
+  },
+  {
+    name: "serial_number",
+    label: "Serial Number",
+    type: "text" as const,
+    placeholder: "e.g., DL-SN-00001",
+  },
+  {
+    name: "status",
+    label: "Status",
+    type: "select" as const,
+    options: ["working", "for_repair", "condemned", "transferred"],
+  },
+  {
+    name: "purchase_date",
+    label: "Purchase Date",
+    type: "date" as const,
+  },
+  {
+    name: "specs.cpu",
+    label: "CPU",
+    type: "text" as const,
+    placeholder: "e.g., Intel i5-10400",
+  },
+  {
+    name: "specs.ram",
+    label: "RAM",
+    type: "text" as const,
+    placeholder: "e.g., 8GB DDR4",
+  },
+  {
+    name: "specs.storage",
+    label: "Storage",
+    type: "text" as const,
+    placeholder: "e.g., 512GB SSD",
+  },
+  {
+    name: "specs.os",
+    label: "Operating System",
+    type: "text" as const,
+    placeholder: "e.g., Windows 11 Pro",
+  },
+  {
+    name: "specs.gpu",
+    label: "GPU",
+    type: "text" as const,
+    placeholder: "e.g., Intel UHD 630",
+  },
+];

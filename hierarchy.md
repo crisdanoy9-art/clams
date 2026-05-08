@@ -29,5 +29,3 @@ CLAMS_ROOT
 ├── equipment_equipment_id_seq
 ├── laboratories_lab_id_seq
 └── peripherals_peripheral_id_seq
-
-sa admin makita ang borrow items sa user then sa user makita niya ang borrow item na still pending and returns
