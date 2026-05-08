@@ -2,13 +2,14 @@
   "name": "fullstack",
   "version": "1.0.0",
   "scripts": {
-    "migrate": "cd backend && npx ts-node -r dotenv/config seeders/migrate.ts",
-    "truncate": "cd backend && npx ts-node -r dotenv/config seeders/truncate.ts",
-    "admin": "cd backend && npx ts-node -r dotenv/config seeders/admin.ts",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "seed": "node backend/seed.js",
+    "installa:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\""
   },
   "devDependencies": {
     "concurrently": "^8.0.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

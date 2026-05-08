@@ -1,0 +1,215 @@
+# CLAMS — Computer Laboratory Asset Management System
+# Database Documentation
+# ============================================================
+
+
+# ============================================================
+# TABLE: categories
+# What it stores: lookup list of item types
+# Who manages it: admin (one-time setup)
+# ============================================================
+
+  category_id     - SERIAL PK       - auto-incremented ID
+  category_name   - VARCHAR         - name of the type (e.g. "Computer Unit", "Projector", "Peripheral")
+
+# Example records:
+#   1 | Computer Unit
+#   2 | Projector
+#   3 | Monitor
+#   4 | Peripheral
+#   5 | Networking Equipment
+
+
+# ============================================================
+# TABLE: laboratories
+# What it stores: physical lab rooms
+# Who manages it: admin (one-time setup)
+# ============================================================
+
+  lab_id          - SERIAL PK       - auto-incremented ID
+  lab_name        - VARCHAR         - display name (e.g. "Computer Lab 1")
+  room_number     - VARCHAR         - room code (e.g. "101")
+  building        - VARCHAR         - which building (e.g. "CCS Building")
+  total_stations  - INTEGER         - how many physical workstations exist in the room
+                                      NOTE: this is a physical fact about the room,
+                                      NOT a count of equipment rows in the database
+  created_at      - TIMESTAMP       - when this lab was added
+
+
+# ============================================================
+# TABLE: users
+# What it stores: all system accounts
+# Who manages it: admin
+# ============================================================
+
+  user_id         - UUID PK         - auto-generated unique ID
+  id_number       - VARCHAR UNIQUE  - school ID number
+  username        - VARCHAR UNIQUE  - login username
+  password_hash   - TEXT            - hashed password, never plain text
+  first_name      - VARCHAR
+  last_name       - VARCHAR
+  email           - VARCHAR UNIQUE
+  role            - VARCHAR         - either "admin" or "instructor"
+  profile_img     - TEXT            - url or file path to profile photo
+  created_at      - TIMESTAMP
+  updated_at      - TIMESTAMP
+
+
+# ============================================================
+# TABLE: equipment
+# What it stores: individually tracked physical assets
+# Who manages it: admin (manually adds each unit)
+#
+# Each row = ONE specific physical unit with its own identity
+# Use for: Desktop PCs, Projectors, Monitors, Printers
+# Do NOT use for: mice, keyboards, cables (those go in peripherals)
+# ============================================================
+
+  equipment_id    - SERIAL PK       - auto-incremented ID
+  asset_tag       - VARCHAR UNIQUE  - physical label stuck on the device (e.g. "COMP-LAB1-001")
+  item_name       - VARCHAR         - what kind of item it is (e.g. "Desktop PC")
+  category_id     - INTEGER FK      - references categories.category_id
+  lab_id          - INTEGER FK      - references laboratories.lab_id (where this unit lives)
+  brand           - VARCHAR         - manufacturer (e.g. "Dell")
+  model           - VARCHAR         - model name (e.g. "OptiPlex 7090")
+  serial_number   - VARCHAR         - manufacturer serial number
+  specs           - JSONB           - technical details stored as JSON
+                                      example: {
+                                        "cpu": "Intel i5-10400",
+                                        "ram": "8GB DDR4",
+                                        "storage": "512GB SSD",
+                                        "gpu": "Intel UHD 630",
+                                        "os": "Windows 11 Pro"
+                                      }
+  status          - VARCHAR         - current condition of this unit
+                                      values: "working" | "for_repair" | "condemned" | "transferred"
+  purchase_date   - DATE            - when the unit was bought
+  is_deleted      - BOOLEAN         - soft delete flag, TRUE means hidden from the system
+  created_at      - TIMESTAMP
+  updated_at      - TIMESTAMP
+
+
+# ============================================================
+# TABLE: peripherals
+# What it stores: bulk stock inventory per lab
+# Who manages it: admin (manually enters counts after physical counting)
+#
+# Each row = the entire stock of ONE item type in ONE lab
+# Use for: mice, keyboards, cables, headsets, USB hubs
+# Do NOT use for: expensive individually tracked items (those go in equipment)
+# ============================================================
+
+  peripheral_id   - SERIAL PK       - auto-incremented ID
+  lab_id          - INTEGER FK      - references laboratories.lab_id
+  category_id     - INTEGER FK      - references categories.category_id
+  item_name       - VARCHAR         - what the item is (e.g. "Mouse", "Keyboard")
+  brand           - VARCHAR         - (e.g. "Logitech")
+  working_count   - INTEGER         - how many units are currently working
+  damaged_count   - INTEGER         - how many units are currently damaged
+                                      NOTE: total = working_count + damaged_count
+                                      total_count is NOT stored as a column, always derive it
+  updated_at      - TIMESTAMP       - when counts were last updated
+
+# NOTE: working_count and damaged_count are manually updated by admin.
+# The system does not auto-calculate these. Someone physically
+# counts the items and types the numbers in.
+
+
+# ============================================================
+# TABLE: borrow_transactions
+# What it stores: records of items being borrowed and returned
+# Who manages it: instructor (fills a form when lending something out)
+# ============================================================
+
+  transaction_id        - SERIAL PK       - auto-incremented ID
+  instructor_id         - UUID FK         - references users.user_id (who processed the borrow)
+  equipment_id          - INTEGER FK      - references equipment.equipment_id
+                                            fill this if borrowing a specific unit (e.g. a projector)
+                                            leave NULL if borrowing from peripheral stock
+  peripheral_id         - INTEGER FK      - references peripherals.peripheral_id
+                                            fill this if borrowing from bulk stock (e.g. 5 mice)
+                                            leave NULL if borrowing a specific equipment unit
+                                            RULE: equipment_id and peripheral_id are mutually exclusive
+                                            exactly ONE of them must be filled, never both, never neither
+  quantity              - INTEGER         - how many units borrowed (always 1 for equipment)
+  borrower_name         - VARCHAR         - name of the person who borrowed the item
+  status                - VARCHAR         - current state of this transaction
+                                            values: "borrowed" | "returned" | "overdue"
+  borrow_date           - TIMESTAMP       - when the item was taken
+  expected_return_date  - TIMESTAMP       - when it should come back
+  actual_return_date    - TIMESTAMP       - when it actually came back, NULL means not yet returned
+  remarks               - TEXT            - any notes (e.g. "returned with scratched surface")
+
+
+# ============================================================
+# TABLE: damage_reports
+# What it stores: reports filed when a piece of equipment breaks
+# Who manages it: instructor (files the report), admin (resolves it)
+#
+# NOTE: damage_reports only links to equipment, NOT peripherals
+# If a peripheral is damaged, admin just updates damaged_count directly
+# ============================================================
+
+  report_id       - SERIAL PK       - auto-incremented ID
+  instructor_id   - UUID FK         - references users.user_id (who filed the report)
+  equipment_id    - INTEGER FK      - references equipment.equipment_id (which unit is damaged)
+                                      NOTE: lab_id is NOT stored here, it is derived via equipment.lab_id
+                                      storing lab_id here would be a 3NF violation
+  subject         - VARCHAR         - short title (e.g. "PC Unit not booting")
+  description     - TEXT            - full description of what happened
+  status          - VARCHAR         - current state of the report
+                                      values: "open" | "in_progress" | "resolved"
+  admin_remarks   - TEXT            - notes from admin after reviewing or resolving
+  created_at      - TIMESTAMP       - when the report was filed
+  resolved_at     - TIMESTAMP       - when the issue was resolved, NULL means still open
+
+
+# ============================================================
+# TABLE: activity_logs
+# What it stores: audit trail of every action done in the system
+# Who manages it: system only (auto-inserted by the backend, never manually)
+#
+# Every time someone creates, updates, or deletes a record anywhere
+# in the system, the backend automatically inserts a row here.
+# This table is read-only from the frontend.
+# ============================================================
+
+  log_id          - SERIAL PK       - auto-incremented ID
+  user_id         - UUID FK         - references users.user_id (who did the action)
+  action          - TEXT            - description of what was done
+                                      examples:
+                                        "created equipment COMP-LAB1-001"
+                                        "updated peripheral Mouse stock in Lab 1"
+                                        "filed damage report for PROJ-LAB1-001"
+                                        "marked borrow transaction #12 as returned"
+                                        "deleted user jdcruz"
+  table_affected  - VARCHAR         - which database table was touched by this action
+                                      examples:
+                                        "equipment"
+                                        "peripherals"
+                                        "borrow_transactions"
+                                        "damage_reports"
+                                        "users"
+                                        "laboratories"
+                                      this tells you WHERE in the database the change happened
+                                      so you can look it up using record_id
+  record_id       - INTEGER         - the primary key (ID) of the row that was affected
+                                      example: if table_affected = "equipment" and record_id = 14,
+                                      you can look up equipment_id = 14 to see what changed
+  created_at      - TIMESTAMP       - when this action happened
+
+
+# ============================================================
+# RELATIONSHIPS SUMMARY
+# ============================================================
+
+#  categories   ──< equipment         (one category has many equipment)
+#  categories   ──< peripherals       (one category has many peripherals)
+#  laboratories ──< equipment         (one lab has many equipment units)
+#  laboratories ──< peripherals       (one lab has many peripheral stocks)
+#  users        ──< borrow_transactions  (one instructor processes many borrows)
+#  users        ──< damage_reports    (one instructor files many reports)
+#  users        ──< activity_logs     (one user has many log entries)
+#  equipment    ──< borrow_transactions  (one unit can be borrowed many times)
+#  equipment    ──< damage_reports    (one unit can have many damage reports)
+#  peripherals  ──< borrow_transactions  (one stock entry can be borrowed many times)

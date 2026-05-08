@@ -1,4 +1,3 @@
--- Database: CLAMS (Computer Laboratory Asset Management System)
 
 CREATE SCHEMA IF NOT EXISTS clams;
 
@@ -83,7 +82,6 @@ CREATE TABLE clams.damage_reports (
     report_id       SERIAL PRIMARY KEY,
     instructor_id   UUID    REFERENCES clams.users(user_id),
     equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
-    -- lab_id removed: derive via equipment.lab_id (was a 3NF violation)
     subject         VARCHAR(255),
     description     TEXT,
     status          VARCHAR(50) DEFAULT 'open',
@@ -98,6 +96,5 @@ CREATE TABLE clams.activity_logs (
     action          TEXT NOT NULL,
     table_affected  VARCHAR(100),
     record_id       INTEGER,
-    -- record_id changed from VARCHAR to INTEGER (PKs are serial/int)
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
