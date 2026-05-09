@@ -78,7 +78,6 @@ export default function DamageReports({ userRole, currentUser }) {
     return currentUser?.user_id;
   };
 
-  // Filter reports based on user role
   let filteredReports = reports;
   if (userRole === "instructor") {
     const userId = getCurrentUserId();
@@ -99,32 +98,32 @@ export default function DamageReports({ userRole, currentUser }) {
       r.reporter_name?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  // Calculate statistics
-  let stats = {};
-  if (userRole === "admin") {
-    stats = {
-      openReports: reports.filter((r) => r.report_status === "open").length,
-      inProgressReports: reports.filter(
-        (r) => r.report_status === "in_progress",
-      ).length,
-      resolvedReports: reports.filter((r) => r.report_status === "resolved")
-        .length,
-      rejectedReports: reports.filter((r) => r.report_status === "rejected")
-        .length,
-      total: reports.length,
-    };
-  } else {
-    const userId = getCurrentUserId();
-    const myReports = reports.filter((r) => r.instructor_id === userId);
-    stats = {
-      myReports: myReports.length,
-      myOpenReports: myReports.filter(
-        (r) => r.report_status === "open" || r.report_status === "in_progress",
-      ).length,
-      myResolvedReports: myReports.filter((r) => r.report_status === "resolved")
-        .length,
-    };
-  }
+  const stats =
+    userRole === "admin"
+      ? {
+          openReports: reports.filter((r) => r.report_status === "open").length,
+          inProgressReports: reports.filter(
+            (r) => r.report_status === "in_progress",
+          ).length,
+          resolvedReports: reports.filter((r) => r.report_status === "resolved")
+            .length,
+          total: reports.length,
+        }
+      : {
+          myReports: reports.filter(
+            (r) => r.instructor_id === getCurrentUserId(),
+          ).length,
+          myOpenReports: reports.filter(
+            (r) =>
+              r.instructor_id === getCurrentUserId() &&
+              (r.report_status === "open" || r.report_status === "in_progress"),
+          ).length,
+          myResolvedReports: reports.filter(
+            (r) =>
+              r.instructor_id === getCurrentUserId() &&
+              r.report_status === "resolved",
+          ).length,
+        };
 
   const handleUpdateReport = async () => {
     if (selectedReport) {
@@ -149,7 +148,6 @@ export default function DamageReports({ userRole, currentUser }) {
     }
   };
 
-  // In reports.jsx - handleSubmitReport function
   const handleSubmitReport = async () => {
     if (
       !newReport.subject ||
@@ -160,14 +158,12 @@ export default function DamageReports({ userRole, currentUser }) {
       return;
     }
     try {
-      // DON'T send instructor_id - backend will auto-fill from JWT
       await axiosInstance.post("/create/damage_reports", {
         data: {
           equipment_id: parseInt(newReport.equipment_id),
           subject: newReport.subject,
           description: newReport.description,
           status: "open",
-          // instructor_id will be added by backend from JWT token
         },
       });
       toast.success("Damage report submitted successfully");
@@ -365,28 +361,26 @@ export default function DamageReports({ userRole, currentUser }) {
         <div className="flex gap-2 border-b border-slate-100">
           <button
             onClick={() => setInstructorView("my_reports")}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`px-4 py-2 text-sm font-medium ${
               instructorView === "my_reports"
                 ? "text-slate-900 border-b-2 border-slate-900"
-                : "text-slate-400 hover:text-slate-600"
+                : "text-slate-400"
             }`}
           >
             <div className="flex items-center gap-2">
-              <List size={16} />
-              My Reports
+              <List size={16} /> My Reports
             </div>
           </button>
           <button
             onClick={() => setInstructorView("resolved")}
-            className={`px-4 py-2 text-sm font-medium transition-colors ${
+            className={`px-4 py-2 text-sm font-medium ${
               instructorView === "resolved"
                 ? "text-slate-900 border-b-2 border-slate-900"
-                : "text-slate-400 hover:text-slate-600"
+                : "text-slate-400"
             }`}
           >
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} />
-              Resolved Reports
+              <CheckCircle size={16} /> Resolved Reports
             </div>
           </button>
         </div>
@@ -397,7 +391,7 @@ export default function DamageReports({ userRole, currentUser }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100">
+              <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Report ID
                 </th>
@@ -426,39 +420,30 @@ export default function DamageReports({ userRole, currentUser }) {
                 <tr>
                   <td
                     colSpan={userRole === "admin" ? 7 : 6}
-                    className="text-center py-12 text-slate-400 text-sm"
+                    className="text-center py-12 text-slate-400"
                   >
                     No damage reports found.
                   </td>
                 </tr>
               ) : (
                 filtered.map((report) => (
-                  <tr
-                    key={report.report_id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
+                  <tr key={report.report_id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">
                       DR-{report.report_id}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
                           <AlertTriangle size={15} className="text-red-500" />
                         </div>
-                        <span className="font-medium text-slate-800">
-                          {report.subject}
-                        </span>
+                        <span className="font-medium">{report.subject}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">
-                          {report.equipment_name}
-                        </p>
-                        <p className="text-xs text-slate-400 font-mono">
-                          {report.asset_tag}
-                        </p>
-                      </div>
+                      <p className="font-medium">{report.equipment_name}</p>
+                      <p className="text-xs text-slate-400 font-mono">
+                        {report.asset_tag}
+                      </p>
                     </td>
                     {userRole === "admin" && (
                       <td className="px-6 py-4">
@@ -466,9 +451,7 @@ export default function DamageReports({ userRole, currentUser }) {
                           <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
                             <User size={12} className="text-slate-500" />
                           </div>
-                          <span className="text-sm text-slate-600">
-                            {report.reporter_name}
-                          </span>
+                          <span>{report.reporter_name}</span>
                         </div>
                       </td>
                     )}
@@ -486,8 +469,7 @@ export default function DamageReports({ userRole, currentUser }) {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => openViewModal(report)}
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                        title="View Details"
+                        className="p-2 rounded-lg hover:bg-slate-100"
                       >
                         <Eye size={16} />
                       </button>
@@ -504,11 +486,9 @@ export default function DamageReports({ userRole, currentUser }) {
       {isViewModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Damage Report
-                </h2>
+                <h2 className="text-lg font-semibold">Damage Report</h2>
                 <p className="text-sm text-slate-500 font-mono">
                   DR-{selectedReport.report_id}
                 </p>
@@ -520,32 +500,29 @@ export default function DamageReports({ userRole, currentUser }) {
                 <XCircle size={20} className="text-slate-400" />
               </button>
             </div>
-
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-400 uppercase">
                   Subject
                 </label>
-                <p className="text-base font-semibold text-slate-900 mt-1">
+                <p className="text-base font-semibold mt-1">
                   {selectedReport.subject}
                 </p>
               </div>
-
               <div>
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-400 uppercase">
                   Description
                 </label>
-                <p className="text-sm text-slate-600 mt-1 bg-slate-50 p-3 rounded-lg">
+                <p className="text-sm bg-slate-50 p-3 rounded-lg">
                   {selectedReport.description}
                 </p>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semibold text-slate-400 uppercase">
                     Equipment
                   </label>
-                  <p className="text-sm text-slate-700 mt-1 font-medium">
+                  <p className="text-sm mt-1 font-medium">
                     {selectedReport.equipment_name}
                   </p>
                   <p className="text-xs text-slate-400 font-mono">
@@ -553,30 +530,27 @@ export default function DamageReports({ userRole, currentUser }) {
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semibold text-slate-400 uppercase">
                     Reported By
                   </label>
-                  <p className="text-sm text-slate-700 mt-1">
-                    {selectedReport.reporter_name}
-                  </p>
+                  <p className="text-sm mt-1">{selectedReport.reporter_name}</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semistrong text-slate-400 uppercase">
                     Created At
                   </label>
-                  <p className="text-sm text-slate-700 mt-1">
+                  <p className="text-sm mt-1">
                     {new Date(selectedReport.created_at).toLocaleString()}
                   </p>
                 </div>
                 {selectedReport.resolved_at && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                    <label className="text-xs font-semibold text-slate-400 uppercase">
                       Resolved At
                     </label>
-                    <p className="text-sm text-slate-700 mt-1">
+                    <p className="text-sm mt-1">
                       {new Date(selectedReport.resolved_at).toLocaleString()}
                     </p>
                   </div>
@@ -585,18 +559,16 @@ export default function DamageReports({ userRole, currentUser }) {
 
               {/* Admin Section */}
               {userRole === "admin" && (
-                <div className="border-t border-slate-100 pt-6 space-y-4">
-                  <h3 className="text-base font-semibold text-slate-900">
-                    Admin Actions
-                  </h3>
+                <div className="border-t pt-4 space-y-4">
+                  <h3 className="font-semibold">Admin Actions</h3>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                    <label className="block text-xs font-medium mb-1.5">
                       Update Status
                     </label>
                     <select
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
+                      className="w-full px-3 py-2 text-sm border rounded-xl"
                     >
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
@@ -605,36 +577,31 @@ export default function DamageReports({ userRole, currentUser }) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                    <label className="block text-xs font-medium mb-1.5">
                       Admin Remarks
                     </label>
                     <textarea
                       value={adminRemark}
                       onChange={(e) => setAdminRemark(e.target.value)}
-                      rows={4}
-                      placeholder="Add your remarks here..."
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl resize-none"
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border rounded-xl"
                     />
                   </div>
                   <button
                     onClick={handleUpdateReport}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors"
+                    className="w-full py-2 bg-slate-900 text-white rounded-xl flex items-center justify-center gap-2"
                   >
                     <Send size={16} /> Update Report
                   </button>
                 </div>
               )}
 
-              {/* Admin Remarks Display for Instructors */}
+              {/* Admin Remarks for Instructor */}
               {userRole !== "admin" && selectedReport.admin_remarks && (
-                <div className="border-t border-slate-100 pt-6">
-                  <h3 className="text-sm font-semibold text-slate-900 mb-2">
-                    Admin Remarks
-                  </h3>
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold mb-2">Admin Remarks</h3>
                   <div className="bg-slate-50 p-3 rounded-lg">
-                    <p className="text-sm text-slate-600">
-                      {selectedReport.admin_remarks}
-                    </p>
+                    <p className="text-sm">{selectedReport.admin_remarks}</p>
                   </div>
                 </div>
               )}
@@ -647,77 +614,53 @@ export default function DamageReports({ userRole, currentUser }) {
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Report Damage
-              </h2>
-              <p className="text-sm text-slate-500">
-                Submit a new damage report
-              </p>
+            <div className="px-6 py-5 border-b">
+              <h2 className="text-lg font-semibold">Report Damage</h2>
             </div>
-
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Equipment *
-                </label>
-                <select
-                  value={newReport.equipment_id}
-                  onChange={(e) =>
-                    setNewReport({ ...newReport, equipment_id: e.target.value })
-                  }
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
-                >
-                  <option value="">Select Equipment</option>
-                  {equipment.map((item) => (
-                    <option key={item.equipment_id} value={item.equipment_id}>
-                      {item.item_name} ({item.asset_tag})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Subject *
-                </label>
-                <input
-                  type="text"
-                  value={newReport.subject}
-                  onChange={(e) =>
-                    setNewReport({ ...newReport, subject: e.target.value })
-                  }
-                  placeholder="Brief description of the issue"
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Description *
-                </label>
-                <textarea
-                  value={newReport.description}
-                  onChange={(e) =>
-                    setNewReport({ ...newReport, description: e.target.value })
-                  }
-                  rows={4}
-                  placeholder="Provide detailed information about the damage..."
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl resize-none"
-                />
-              </div>
+              <select
+                value={newReport.equipment_id}
+                onChange={(e) =>
+                  setNewReport({ ...newReport, equipment_id: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border rounded-xl"
+              >
+                <option value="">Select Equipment</option>
+                {equipment.map((item) => (
+                  <option key={item.equipment_id} value={item.equipment_id}>
+                    {item.item_name} ({item.asset_tag})
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Subject"
+                value={newReport.subject}
+                onChange={(e) =>
+                  setNewReport({ ...newReport, subject: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border rounded-xl"
+              />
+              <textarea
+                placeholder="Description"
+                rows={4}
+                value={newReport.description}
+                onChange={(e) =>
+                  setNewReport({ ...newReport, description: e.target.value })
+                }
+                className="w-full px-3 py-2 text-sm border rounded-xl"
+              />
             </div>
-
-            <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-5 flex justify-end gap-3">
+            <div className="px-6 py-5 border-t flex justify-end gap-3">
               <button
                 onClick={() => setIsFormOpen(false)}
-                className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition"
+                className="px-4 py-2 border rounded-xl"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitReport}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 rounded-xl hover:bg-slate-700 transition"
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl"
               >
                 Submit Report
               </button>

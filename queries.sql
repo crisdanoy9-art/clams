@@ -55,15 +55,11 @@ CREATE TABLE clams.peripherals (
     category_id     INTEGER REFERENCES clams.categories(category_id),
     item_name       VARCHAR(255) NOT NULL,
     brand           VARCHAR(100),
-    working_count   INTEGER DEFAULT 0,
-    damaged_count   INTEGER DEFAULT 0,
-    -- total_count derived as (working_count + damaged_count)
+    status VARCHAR(50) DEFAULT 'working',
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_deleted      BOOLEAN DEFAULT FALSE,
-
-    -- either tied to a specific PC or floating in a lab, never neither
-    CONSTRAINT chk_peripheral_owner CHECK (
-        equipment_id IS NOT NULL OR lab_id IS NOT NULL
+    CONSTRAINT chk_peripheral_location CHECK (
+        (equipment_id IS NOT NULL) OR (lab_id IS NOT NULL)
     )
 );
 

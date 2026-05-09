@@ -13,15 +13,11 @@ const prepareData = (req) => {
     bodyData = req.body;
   }
 
-  // AUTO-FILL USER ID from JWT token
+  // AUTO-FILL USER ID from JWT token - FIXED
   if (req.user && req.user.user_id) {
-    // For damage_reports and borrow_transactions, set instructor_id from token
-    if (
-      bodyData.hasOwnProperty("instructor_id") ||
-      bodyData.instructor_id === undefined
-    ) {
-      bodyData.instructor_id = req.user.user_id;
-    }
+    // For damage_reports and borrow_transactions, always set instructor_id from token
+    // This overrides any value sent from frontend
+    bodyData.instructor_id = req.user.user_id;
   }
 
   if (req.files && req.files.length > 0) {
@@ -38,6 +34,8 @@ export const Post = async (req, res) => {
   try {
     const { table } = req.params;
     const bodyData = prepareData(req);
+
+    console.log(`Creating ${table} with data:`, bodyData); // Debug log
 
     const result = await insertData(bodyData, table);
 

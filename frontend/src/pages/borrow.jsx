@@ -1,3 +1,4 @@
+// frontend/src/pages/borrow.jsx
 import React, { useState, useEffect } from "react";
 import {
   ClipboardList,
@@ -9,10 +10,18 @@ import {
   XCircle,
   User,
   Monitor,
-  MousePointer2,
+  Calendar,
+  MessageSquare,
+  ArrowLeftRight,
   BookOpen,
   History,
+  RefreshCw,
+  Filter,
+  ChevronRight,
   AlertCircle,
+  Printer,
+  MousePointer2,
+  Key,
 } from "lucide-react";
 import axiosInstance from "../lib/axios";
 import toast from "react-hot-toast";
@@ -21,11 +30,14 @@ const STATUS_STYLES = {
   borrowed: "bg-amber-50 text-amber-700",
   returned: "bg-emerald-50 text-emerald-700",
   overdue: "bg-red-50 text-red-600",
+  cancelled: "bg-slate-100 text-slate-500",
 };
+
 const STATUS_LABELS = {
   borrowed: "Borrowed",
   returned: "Returned",
   overdue: "Overdue",
+  cancelled: "Cancelled",
 };
 
 export default function BorrowTransactions({ userRole, currentUser }) {
@@ -82,16 +94,22 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     return currentUser?.user_id;
   };
 
+  // FILTER BY INSTRUCTOR ID - THIS IS THE KEY FIX
   let filteredTransactions = transactions;
   if (userRole === "instructor") {
     const userId = getCurrentUserId();
     const userTransactions = transactions.filter(
       (t) => t.instructor_id === userId,
     );
-    filteredTransactions =
-      instructorView === "current"
-        ? userTransactions.filter((t) => t.transaction_status === "borrowed")
-        : userTransactions.filter((t) => t.transaction_status !== "borrowed");
+    if (instructorView === "current") {
+      filteredTransactions = userTransactions.filter(
+        (t) => t.transaction_status === "borrowed",
+      );
+    } else {
+      filteredTransactions = userTransactions.filter(
+        (t) => t.transaction_status !== "borrowed",
+      );
+    }
   }
 
   const filtered = filteredTransactions.filter((t) => {
@@ -155,7 +173,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     }
   };
 
-  // In borrow.jsx - handleSubmitBorrow function
   const handleSubmitBorrow = async () => {
     if (!newBorrow.item_id || !newBorrow.expected_return_date) {
       toast.error("Please fill in all required fields");
@@ -171,14 +188,11 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         remarks: newBorrow.remarks || "",
       };
 
-      // Add equipment_id or peripheral_id based on type
       if (newBorrow.item_type === "equipment") {
         borrowData.equipment_id = parseInt(newBorrow.item_id);
       } else {
         borrowData.peripheral_id = parseInt(newBorrow.item_id);
       }
-
-      // DON'T send instructor_id - backend will auto-fill from JWT
 
       await axiosInstance.post("/create/borrow_transactions", {
         data: borrowData,
@@ -199,7 +213,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     }
   };
 
-  // Get available items
   const getAvailableEquipment = () => {
     const borrowedEquipmentIds = transactions
       .filter((t) => t.transaction_status === "borrowed" && t.equipment_id)
@@ -213,16 +226,33 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     return peripherals.filter((p) => p.working_count > 0);
   };
 
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "borrowed":
+        return <Clock size={14} />;
+      case "returned":
+        return <CheckCircle size={14} />;
+      case "overdue":
+        return <AlertCircle size={14} />;
+      default:
+        return <Clock size={14} />;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500">Loading transactions...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -251,7 +281,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl cursor-pointer"
+            className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="borrowed">Borrowed</option>
@@ -261,13 +291,105 @@ export default function BorrowTransactions({ userRole, currentUser }) {
           {userRole === "instructor" && (
             <button
               onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700"
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors cursor-pointer"
             >
-              <Plus size={16} /> Borrow Item
+              <Plus size={16} />
+              Borrow Item
             </button>
           )}
         </div>
       </div>
+
+      {/* Summary Cards */}
+      {userRole === "admin" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <Clock size={20} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Borrowed
+              </p>
+              <p className="text-2xl font-bold text-amber-600">
+                {stats.borrowedCount}
+              </p>
+              <p className="text-xs text-slate-400">Active borrowings</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <CheckCircle size={20} className="text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Returned
+              </p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {stats.returnedCount}
+              </p>
+              <p className="text-xs text-slate-400">Completed</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+              <AlertCircle size={20} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Overdue
+              </p>
+              <p className="text-2xl font-bold text-red-600">
+                {stats.overdueCount}
+              </p>
+              <p className="text-xs text-slate-400">Past due date</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+              <ClipboardList size={20} className="text-slate-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Total
+              </p>
+              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+              <p className="text-xs text-slate-400">All transactions</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <BookOpen size={20} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Current Borrowed
+              </p>
+              <p className="text-2xl font-bold text-amber-600">
+                {stats.currentBorrowed}
+              </p>
+              <p className="text-xs text-slate-400">Items in your possession</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+              <History size={20} className="text-slate-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                Borrow History
+              </p>
+              <p className="text-2xl font-bold text-slate-900">
+                {stats.totalHistory}
+              </p>
+              <p className="text-xs text-slate-400">Completed transactions</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Instructor View Tabs */}
       {userRole === "instructor" && (
@@ -298,91 +420,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
               Borrow History
             </div>
           </button>
-        </div>
-      )}
-
-      {/* Summary Cards */}
-      {userRole === "admin" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-              <Clock size={20} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Borrowed
-              </p>
-              <p className="text-2xl font-bold text-amber-600">
-                {stats.borrowedCount}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-              <CheckCircle size={20} className="text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Returned
-              </p>
-              <p className="text-2xl font-bold text-emerald-600">
-                {stats.returnedCount}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-              <AlertCircle size={20} className="text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Overdue
-              </p>
-              <p className="text-2xl font-bold text-red-600">
-                {stats.overdueCount}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-              <ClipboardList size={20} className="text-slate-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Total
-              </p>
-              <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-              <BookOpen size={20} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Current Borrowed
-              </p>
-              <p className="text-2xl font-bold text-amber-600">
-                {stats.currentBorrowed}
-              </p>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-              <History size={20} className="text-slate-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-                Borrow History
-              </p>
-              <p className="text-2xl font-bold text-slate-900">
-                {stats.totalHistory}
-              </p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -429,18 +466,18 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </td>
                 </tr>
               ) : (
-                filtered.map((t) => (
+                filtered.map((transaction) => (
                   <tr
-                    key={t.transaction_id}
+                    key={transaction.transaction_id}
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">
-                      TR-{t.transaction_id}
+                      TR-{transaction.transaction_id}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          {t.equipment_id ? (
+                          {transaction.equipment_id ? (
                             <Monitor size={15} className="text-blue-500" />
                           ) : (
                             <MousePointer2
@@ -451,10 +488,10 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                         </div>
                         <div>
                           <p className="font-medium text-slate-800">
-                            {t.item_name}
+                            {transaction.item_name}
                           </p>
                           <p className="text-xs text-slate-400 font-mono">
-                            {t.asset_tag || ""}
+                            {transaction.asset_tag || "Peripheral"}
                           </p>
                         </div>
                       </div>
@@ -466,36 +503,39 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                             <User size={12} className="text-slate-500" />
                           </div>
                           <span className="text-sm text-slate-600">
-                            {t.borrower_name || t.instructor_name}
+                            {transaction.borrower_name}
                           </span>
                         </div>
                       </td>
                     )}
                     <td className="px-6 py-4 text-slate-600 font-medium">
-                      {t.quantity}
+                      {transaction.quantity}
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
-                      {t.borrow_date
-                        ? new Date(t.borrow_date).toLocaleDateString()
+                      {transaction.borrow_date
+                        ? new Date(transaction.borrow_date).toLocaleDateString()
                         : "-"}
                     </td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
-                      {t.expected_return_date
-                        ? new Date(t.expected_return_date).toLocaleDateString()
+                      {transaction.expected_return_date
+                        ? new Date(
+                            transaction.expected_return_date,
+                          ).toLocaleDateString()
                         : "-"}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[t.transaction_status]}`}
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[transaction.transaction_status]}`}
                       >
-                        {STATUS_LABELS[t.transaction_status]}
+                        {getStatusIcon(transaction.transaction_status)}
+                        {STATUS_LABELS[transaction.transaction_status]}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            setSelectedTransaction(t);
+                            setSelectedTransaction(transaction);
                             setIsViewModalOpen(true);
                           }}
                           className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
@@ -504,9 +544,9 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                           <Eye size={16} />
                         </button>
                         {userRole === "instructor" &&
-                          t.transaction_status === "borrowed" && (
+                          transaction.transaction_status === "borrowed" && (
                             <button
-                              onClick={() => handleReturnItem(t)}
+                              onClick={() => handleReturnItem(transaction)}
                               className="p-2 rounded-lg hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer"
                               title="Mark as Returned"
                             >
@@ -543,6 +583,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 <XCircle size={20} className="text-slate-400" />
               </button>
             </div>
+
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -562,6 +603,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -579,11 +621,13 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                     <span
                       className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[selectedTransaction.transaction_status]}`}
                     >
+                      {getStatusIcon(selectedTransaction.transaction_status)}
                       {STATUS_LABELS[selectedTransaction.transaction_status]}
                     </span>
                   </div>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -604,6 +648,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               </div>
+
               {selectedTransaction.actual_return_date && (
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -616,6 +661,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               )}
+
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   Remarks
@@ -639,6 +685,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 Fill out the form to borrow equipment
               </p>
             </div>
+
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
@@ -679,6 +726,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </label>
                 </div>
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Select{" "}
@@ -709,6 +757,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   ))}
                 </select>
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Quantity *
@@ -723,7 +772,13 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   }
                   className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
                 />
+                {newBorrow.item_type === "equipment" && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    Equipment can only be borrowed one at a time
+                  </p>
+                )}
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Expected Return Date *
@@ -739,7 +794,11 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   }
                   className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
                 />
+                <p className="text-xs text-slate-400 mt-1">
+                  Standard borrowing period is 7 days
+                </p>
               </div>
+
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Remarks
@@ -755,6 +814,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 />
               </div>
             </div>
+
             <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex justify-end gap-3">
               <button
                 onClick={() => setIsFormOpen(false)}
