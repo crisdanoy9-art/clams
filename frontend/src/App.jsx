@@ -1,142 +1,156 @@
-import { useState } from "react";
-import SideBar from "./components/sideBar";
-import NavBar from "./components/navBar";
+import { useState, useEffect } from "react";
+import Sidebar from "./components/sideBar";
+import { Navbar } from "./components/navBar";
+import Dashboard from "./pages/dashboard";
+import Laboratories from "./pages/laboratories";
+import Equipment from "./pages/equipment";
+import Peripherals from "./pages/peripherals";
+import Settings from "./pages/settings";
+import DamageReports from "./pages/reports"; // fixed: use damage.jsx
+import BorrowTransactions from "./pages/borrow";
+import Login from "./pages/login";
+import ActivityLogs from "./pages/logs";
+import UserManagement from "./pages/users";
+// Optional: import Reports from "./pages/reports"; if you have a separate analytics page
 
-function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+const App = () => {
+  const [userRole, setUserRole] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [currentView, setCurrentView] = useState("dashboard");
+  const [isLoading, setIsLoading] = useState(true);
 
-  return (
-    <div className="flex flex-col h-screen bg-stone-100">
-      <NavBar onToggle={() => setSidebarOpen((p) => !p)} />
+  // Check for existing session on mount
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const loggedIn = localStorage.getItem("isLoggedIn");
 
-      <div className="flex flex-1 overflow-hidden">
-        <SideBar isOpen={sidebarOpen} />
+    if (token && role && loggedIn === "true") {
+      setUserRole(role);
+      setIsLoggedIn(true);
+      const savedView = localStorage.getItem("currentView");
+      if (savedView) {
+        setCurrentView(savedView);
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-800">
-              Dashboard
-            </h1>
-            <p className="text-sm text-stone-500 mt-1">
-              Welcome back — here's what's happening today.
+  const handleLogin = (role) => {
+    setUserRole(role);
+    setIsLoggedIn(true);
+    setCurrentView("dashboard");
+    localStorage.setItem("currentView", "dashboard");
+  };
+
+  const handleSetView = (view) => {
+    localStorage.setItem("currentView", view);
+    setCurrentView(view);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("currentView");
+    if (!localStorage.getItem("rememberMe")) {
+      localStorage.removeItem("savedEmail");
+    }
+    setUserRole(null);
+    setIsLoggedIn(false);
+    setCurrentView("dashboard");
+  };
+
+  const renderView = () => {
+    switch (currentView) {
+      case "dashboard":
+        return <Dashboard userRole={userRole} onNavigate={handleSetView} />;
+      case "laboratories":
+        return <Laboratories userRole={userRole} />;
+      case "equipment":
+        return <Equipment userRole={userRole} />;
+      case "peripherals":
+        return <Peripherals userRole={userRole} />;
+      case "borrow":
+        return <BorrowTransactions userRole={userRole} />;
+      case "users":
+        return <UserManagement />;
+      case "reports":
+        return <DamageReports userRole={userRole} />;
+      case "logs":
+        return <ActivityLogs userRole={userRole} />;
+      case "settings":
+        return <Settings userRole={userRole} />;
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] border border-dashed border-slate-200 rounded-2xl">
+            <p className="text-base font-semibold text-slate-500 uppercase tracking-widest mb-2">
+              {currentView}
+            </p>
+            <p className="text-sm text-slate-400 font-mono">
+              ./pages/
+              {currentView.charAt(0).toUpperCase() + currentView.slice(1)}.jsx
+            </p>
+            <p className="mt-3 text-sm text-slate-400">
+              This page hasn't been built yet.
             </p>
           </div>
+        );
+    }
+  };
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              {
-                label: "Total Revenue",
-                value: "$48,295",
-                delta: "+12.5%",
-                up: true,
-              },
-              {
-                label: "Active Users",
-                value: "3,842",
-                delta: "+4.1%",
-                up: true,
-              },
-              { label: "New Orders", value: "284", delta: "-2.3%", up: false },
-              { label: "Conversion", value: "5.6%", delta: "+0.8%", up: true },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="bg-white rounded-xl border border-stone-200 p-5"
-              >
-                <p className="text-xs font-medium text-stone-400 uppercase tracking-wide mb-2">
-                  {s.label}
-                </p>
-                <p className="text-2xl font-semibold text-stone-800 tracking-tight">
-                  {s.value}
-                </p>
-                <p
-                  className={`text-sm font-medium mt-1 ${s.up ? "text-emerald-600" : "text-red-500"}`}
-                >
-                  {s.delta}
-                </p>
-              </div>
-            ))}
-          </div>
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-slate-50 items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
-          {/* Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="text-sm font-semibold text-stone-700 mb-4">
-                Recent Activity
-              </h2>
-              <ul className="divide-y divide-stone-100">
-                {[
-                  {
-                    user: "Alice Chen",
-                    action: "placed a new order",
-                    time: "2 min ago",
-                  },
-                  {
-                    user: "Marco Silva",
-                    action: "updated their profile",
-                    time: "14 min ago",
-                  },
-                  {
-                    user: "Priya Nair",
-                    action: "submitted a support ticket",
-                    time: "1 hr ago",
-                  },
-                  {
-                    user: "Tom Hargreaves",
-                    action: "completed onboarding",
-                    time: "3 hr ago",
-                  },
-                  {
-                    user: "Yuki Tanaka",
-                    action: "upgraded to Pro",
-                    time: "Yesterday",
-                  },
-                ].map((item) => (
-                  <li key={item.user} className="flex items-center gap-3 py-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold flex items-center justify-center shrink-0">
-                      {item.user[0]}
-                    </div>
-                    <p className="flex-1 text-sm text-stone-500 truncate">
-                      <span className="font-medium text-stone-800">
-                        {item.user}
-                      </span>{" "}
-                      {item.action}
-                    </p>
-                    <span className="text-xs text-stone-400 shrink-0">
-                      {item.time}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+  // Show login page if not logged in
+  if (!isLoggedIn) {
+    return <Login onLogin={handleLogin} />;
+  }
 
-            <div className="bg-white rounded-xl border border-stone-200 p-6">
-              <h2 className="text-sm font-semibold text-stone-700 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "New Report", icon: "📄" },
-                  { label: "Invite User", icon: "👤" },
-                  { label: "Export Data", icon: "📤" },
-                  { label: "Settings", icon: "⚙️" },
-                ].map((a) => (
-                  <button
-                    key={a.label}
-                    className="flex flex-col items-center gap-2 p-4 bg-stone-50 hover:bg-stone-100 border border-stone-200 rounded-lg text-xs font-medium text-stone-600 transition-colors cursor-pointer"
-                  >
-                    <span className="text-xl">{a.icon}</span>
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+  // Show main app if logged in
+  const showSidebar = currentView !== "settings";
+
+  return (
+    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+      {showSidebar && (
+        <Sidebar
+          onSelect={handleSetView}
+          activeView={currentView}
+          userRole={userRole}
+          expanded={sidebarExpanded}
+          onExpandChange={setSidebarExpanded}
+        />
+      )}
+
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar
+          currentView={currentView}
+          userRole={userRole}
+          onLogout={handleLogout}
+          onNavigate={handleSetView}
+        />
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-8 max-w-7xl mx-auto">{renderView()}</div>
+          <footer className="px-8 pb-6 text-center text-xs text-slate-300 tracking-widest uppercase">
+            JRMSU — College of Computing Studies © 2026
+          </footer>
         </main>
       </div>
     </div>
   );
-}
+};
 
 export default App;

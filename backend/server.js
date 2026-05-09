@@ -10,6 +10,15 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+app.use(
+  cors({
+    origin: "http://localhost:5173", // your Vite dev server
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // allow cookies / auth headers
+  }),
+);
+
 const app = express();
 const PORT = 3000;
 

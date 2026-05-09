@@ -88,3 +88,12 @@ const seedDatabase = async () => {
 };
 
 seedDatabase();
+
+// { label: "Keyboard", value: "keyboard" },
+// { label: "Mouse", value: "mouse" },
+// { label: "Headset", value: "headset" },
+// { label: "Microphone", value: "microphone" },
+// { label: "Camera", value: "camera" },
+// { label: "Printer", value: "printer" },
+// { label: "Monitor", value: "monitor" },
+// { label: "Speakers", value: "speakers" }
