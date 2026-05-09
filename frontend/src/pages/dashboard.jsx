@@ -1,4 +1,5 @@
-import React from "react";
+// frontend/src/pages/dashboard.jsx
+import React, { useState, useEffect } from "react";
 import {
   FlaskConical,
   Monitor,
@@ -9,6 +10,8 @@ import {
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import axiosInstance from "../lib/axios";
+import toast from "react-hot-toast";
 
 const StatCard = ({ icon, label, value, sub, color }) => (
   <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-start gap-4">
@@ -44,84 +47,204 @@ const QuickCard = ({ icon, label, desc, onClick, color }) => (
   </button>
 );
 
-const recentActivity = [
-  {
-    icon: <CheckCircle2 size={15} />,
-    text: "Monitor #A-042 marked as working",
-    time: "2 min ago",
-    color: "text-emerald-500",
-  },
-  {
-    icon: <AlertTriangle size={15} />,
-    text: "Damage report filed for Keyboard #B-011",
-    time: "14 min ago",
-    color: "text-amber-500",
-  },
-  {
-    icon: <ClipboardList size={15} />,
-    text: "Juan dela Cruz borrowed Projector #C-007",
-    time: "1 hr ago",
-    color: "text-blue-500",
-  },
-  {
-    icon: <CheckCircle2 size={15} />,
-    text: "Laptop #A-019 returned successfully",
-    time: "3 hr ago",
-    color: "text-emerald-500",
-  },
-  {
-    icon: <TrendingUp size={15} />,
-    text: "Lab 3 inventory updated",
-    time: "Yesterday",
-    color: "text-indigo-500",
-  },
-];
+export default function Dashboard({ userRole, currentUser, onNavigate }) {
+  const [stats, setStats] = useState({
+    labs: 0,
+    equipment: 0,
+    peripherals: 0,
+    activeBorrows: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [assetStatus, setAssetStatus] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export default function Dashboard({ userRole, onNavigate }) {
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // frontend/src/pages/dashboard.jsx - Fix the fetchDashboardData function
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Use ONLY the endpoints that exist in your backend
+      const [inventoryRes, transactionsRes] = await Promise.all([
+        axiosInstance.get("/inventory"), // This exists ✅
+        axiosInstance.get("/transactions"), // This exists ✅
+      ]);
+
+      const inventory = inventoryRes.data || [];
+      const transactions = transactionsRes.data || [];
+
+      // Calculate unique labs from inventory data (instead of /laboratories endpoint)
+      const uniqueLabs = [...new Set(inventory.map((item) => item.lab_name))];
+
+      // Calculate stats without needing separate endpoints
+      const activeBorrows = transactions.filter(
+        (t) => t.transaction_status === "borrowed",
+      ).length;
+      const totalEquipment = inventory.length;
+
+      setStats({
+        labs: uniqueLabs.length,
+        equipment: totalEquipment,
+        peripherals: 0, // You'll need to add a peripherals endpoint or calculate differently
+        activeBorrows,
+      });
+
+      // Calculate asset status from inventory
+      const equipmentStatus = inventory.reduce((acc, item) => {
+        acc[item.status] = (acc[item.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const total = Object.values(equipmentStatus).reduce((a, b) => a + b, 0);
+      const statusData = [
+        {
+          label: "Working",
+          count: equipmentStatus.working || 0,
+          total,
+          color: "bg-emerald-500",
+        },
+        {
+          label: "For Repair",
+          count: equipmentStatus.for_repair || 0,
+          total,
+          color: "bg-amber-400",
+        },
+        {
+          label: "Retired",
+          count: equipmentStatus.retired || 0,
+          total,
+          color: "bg-slate-300",
+        },
+        {
+          label: "Lost",
+          count: equipmentStatus.lost || 0,
+          total,
+          color: "bg-red-400",
+        },
+      ];
+      setAssetStatus(statusData);
+
+      // Format recent activity from transactions
+      const recent = transactions.slice(0, 5).map((t) => ({
+        icon:
+          t.transaction_status === "borrowed" ? (
+            <ClipboardList size={15} />
+          ) : (
+            <CheckCircle2 size={15} />
+          ),
+        text: `${t.borrower_name} ${t.transaction_status === "borrowed" ? "borrowed" : "returned"} ${t.item_name}`,
+        time: formatRelativeTime(t.borrow_date),
+        color:
+          t.transaction_status === "borrowed"
+            ? "text-blue-500"
+            : "text-emerald-500",
+      }));
+      setRecentActivity(recent);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const getActivityIcon = (action) => {
+    switch (action?.toLowerCase()) {
+      case "return":
+        return <CheckCircle2 size={15} />;
+      case "report":
+        return <AlertTriangle size={15} />;
+      case "borrow":
+        return <ClipboardList size={15} />;
+      default:
+        return <TrendingUp size={15} />;
+    }
+  };
+
+  const getActivityColor = (action) => {
+    switch (action?.toLowerCase()) {
+      case "return":
+        return "text-emerald-500";
+      case "report":
+        return "text-amber-500";
+      case "borrow":
+        return "text-blue-500";
+      default:
+        return "text-indigo-500";
+    }
+  };
+
+  const formatRelativeTime = (dateStr) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays} days ago`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Welcome */}
       <div>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Welcome back, {currentUser?.first_name || currentUser?.username}!
+        </h1>
         <p className="text-sm text-slate-500 mt-1">
           Here's an overview of the CCS laboratory assets.
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           icon={<FlaskConical size={22} className="text-indigo-600" />}
           color="bg-indigo-50"
           label="Laboratories"
-          value="6"
+          value={stats.labs}
           sub="All operational"
         />
         <StatCard
           icon={<Monitor size={22} className="text-blue-600" />}
           color="bg-blue-50"
           label="Equipment"
-          value="184"
-          sub="12 for repair"
+          value={stats.equipment}
+          sub="Assets tracked"
         />
         <StatCard
           icon={<MousePointer2 size={22} className="text-violet-600" />}
           color="bg-violet-50"
           label="Peripherals"
-          value="430"
-          sub="18 damaged"
+          value={stats.peripherals}
+          sub="Total units"
         />
         <StatCard
           icon={<ClipboardList size={22} className="text-emerald-600" />}
           color="bg-emerald-50"
           label="Active Borrows"
-          value="23"
-          sub="5 overdue"
+          value={stats.activeBorrows}
+          sub="Current loans"
         />
       </div>
 
-      {/* Main content row */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Recent activity */}
         <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-semibold text-slate-800">
@@ -130,42 +253,32 @@ export default function Dashboard({ userRole, onNavigate }) {
             <span className="text-xs text-slate-400">Today</span>
           </div>
           <ul className="divide-y divide-slate-50">
-            {recentActivity.map((item, i) => (
-              <li key={i} className="flex items-start gap-3 py-3.5">
-                <span className={`mt-0.5 shrink-0 ${item.color}`}>
-                  {item.icon}
-                </span>
-                <p className="text-sm text-slate-600 flex-1">{item.text}</p>
-                <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
-                  {item.time}
-                </span>
+            {recentActivity.length === 0 ? (
+              <li className="py-4 text-center text-slate-400">
+                No recent activity
               </li>
-            ))}
+            ) : (
+              recentActivity.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 py-3.5">
+                  <span className={`mt-0.5 shrink-0 ${item.color}`}>
+                    {item.icon}
+                  </span>
+                  <p className="text-sm text-slate-600 flex-1">{item.text}</p>
+                  <span className="text-xs text-slate-400 shrink-0 whitespace-nowrap">
+                    {item.time}
+                  </span>
+                </li>
+              ))
+            )}
           </ul>
         </div>
 
-        {/* Status snapshot */}
         <div className="bg-white rounded-2xl border border-slate-100 p-6">
           <h2 className="text-base font-semibold text-slate-800 mb-5">
             Asset Status
           </h2>
           <div className="flex flex-col gap-3">
-            {[
-              {
-                label: "Working",
-                count: 172,
-                total: 184,
-                color: "bg-emerald-500",
-              },
-              {
-                label: "For Repair",
-                count: 12,
-                total: 184,
-                color: "bg-amber-400",
-              },
-              { label: "Retired", count: 8, total: 184, color: "bg-slate-300" },
-              { label: "Lost", count: 2, total: 184, color: "bg-red-400" },
-            ].map((s) => (
+            {assetStatus.map((s) => (
               <div key={s.label}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm text-slate-600">{s.label}</span>
@@ -182,17 +295,9 @@ export default function Dashboard({ userRole, onNavigate }) {
               </div>
             ))}
           </div>
-
-          <div className="mt-6 pt-5 border-t border-slate-50">
-            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
-              <Clock size={16} />
-              <p className="text-sm font-medium">5 borrows overdue</p>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Quick nav */}
       <div>
         <h2 className="text-base font-semibold text-slate-800 mb-4">
           Quick Access

@@ -1,6 +1,8 @@
+// backend/controller/authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { findUserByUsername, createUser } from "../model/authModel.js";
+import { logActivity } from "../model/logsModel.js";
 
 const SALT_ROUNDS = 10;
 
@@ -16,7 +18,6 @@ export const Register = async (req, res) => {
       role,
     } = req.body;
 
-    // Hash the password before saving
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
     const newUser = await createUser({
@@ -51,7 +52,6 @@ export const Login = async (req, res) => {
       return res.status(401).json({ msg: "Wrong password" });
     }
 
-    // Check if secret exists before signing
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is missing from .env file");
     }
@@ -62,12 +62,22 @@ export const Login = async (req, res) => {
       { expiresIn: "8h" },
     );
 
+    // Log the login action (record_id = 1 for admin user)
+    await logActivity(user.user_id, "LOGIN", "users", 1);
+
     return res.status(200).json({
       token,
-      user: { user_id: user.user_id, username: user.username },
+      user: {
+        user_id: user.user_id,
+        username: user.username,
+        role: user.role,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+      },
     });
   } catch (error) {
-    console.error(error); // This prints to your terminal
-    return res.status(500).json({ error: error.message }); // This prints to Postman
+    console.error(error);
+    return res.status(500).json({ error: error.message });
   }
 };

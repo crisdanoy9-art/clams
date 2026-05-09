@@ -1,6 +1,7 @@
+// backend/controller/crudController.js
 import { insertData, updateData, softDelete } from "../model/crudModel.js";
+import { logActivity } from "../model/logsModel.js";
 
-// Helper to parse data and attach files
 const prepareData = (req) => {
   let bodyData = req.body.data;
 
@@ -12,11 +13,13 @@ const prepareData = (req) => {
     bodyData = req.body;
   }
 
-  // AUTO-FILL USER ID
-  // If the table needs an instructor_id or user_id, get it from the JWT!
+  // AUTO-FILL USER ID from JWT token
   if (req.user && req.user.user_id) {
-    // If the table is 'damage_reports' or 'borrow_transactions', use the ID from the token
-    if (bodyData.hasOwnProperty("instructor_id")) {
+    // For damage_reports and borrow_transactions, set instructor_id from token
+    if (
+      bodyData.hasOwnProperty("instructor_id") ||
+      bodyData.instructor_id === undefined
+    ) {
       bodyData.instructor_id = req.user.user_id;
     }
   }
@@ -37,6 +40,19 @@ export const Post = async (req, res) => {
     const bodyData = prepareData(req);
 
     const result = await insertData(bodyData, table);
+
+    let recordId = null;
+    const idKey = Object.keys(result).find(
+      (key) => key.includes("_id") || key === "id",
+    );
+    if (idKey && result[idKey]) {
+      recordId = parseInt(result[idKey]);
+    }
+
+    if (recordId && !isNaN(recordId)) {
+      await logActivity(req.user.user_id, "CREATE", table, recordId);
+    }
+
     return res.status(201).json(result);
   } catch (error) {
     console.error("Insert Error:", error);
@@ -52,6 +68,12 @@ export const Update = async (req, res) => {
 
     const result = await updateData(bodyData, table, id);
     if (!result) return res.status(404).json({ msg: "Record not found" });
+
+    const numericId = parseInt(id);
+    if (!isNaN(numericId)) {
+      await logActivity(req.user.user_id, "UPDATE", table, numericId);
+    }
+
     return res.status(200).json(result);
   } catch (error) {
     console.error("Update Error:", error);
@@ -64,12 +86,21 @@ export const Remove = async (req, res) => {
   try {
     const { table, id } = req.params;
     const result = await softDelete(id, table);
-    if (!result)
+
+    if (!result) {
       return res
         .status(404)
         .json({ msg: "Record not found or table doesn't support soft delete" });
+    }
+
+    const numericId = parseInt(id);
+    if (!isNaN(numericId)) {
+      await logActivity(req.user.user_id, "DELETE", table, numericId);
+    }
+
     return res.status(200).json({ msg: "Item moved to trash", data: result });
   } catch (error) {
+    console.error("Delete Error:", error);
     return res.status(500).json({ error: error.message });
   }
 };

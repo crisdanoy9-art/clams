@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Settings, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 
 export function Navbar({ currentView, userRole, onLogout, onNavigate }) {

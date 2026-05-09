@@ -1,4 +1,3 @@
-
 CREATE SCHEMA IF NOT EXISTS clams;
 
 CREATE TABLE clams.categories (
@@ -26,7 +25,8 @@ CREATE TABLE clams.users (
     role            VARCHAR(20),
     profile_img     TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted      BOOLEAN DEFAULT FALSE,
 );
 
 CREATE TABLE clams.equipment (
@@ -48,14 +48,23 @@ CREATE TABLE clams.equipment (
 
 CREATE TABLE clams.peripherals (
     peripheral_id   SERIAL PRIMARY KEY,
+    -- if equipment_id is set, lab_id is derived through equipment (assigned to a PC)
+    -- if equipment_id is NULL, lab_id is required (lab spare/stock)
+    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
     lab_id          INTEGER REFERENCES clams.laboratories(lab_id),
     category_id     INTEGER REFERENCES clams.categories(category_id),
     item_name       VARCHAR(255) NOT NULL,
     brand           VARCHAR(100),
     working_count   INTEGER DEFAULT 0,
     damaged_count   INTEGER DEFAULT 0,
-    -- total_count removed: derive as (working_count + damaged_count)
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    -- total_count derived as (working_count + damaged_count)
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted      BOOLEAN DEFAULT FALSE,
+
+    -- either tied to a specific PC or floating in a lab, never neither
+    CONSTRAINT chk_peripheral_owner CHECK (
+        equipment_id IS NOT NULL OR lab_id IS NOT NULL
+    )
 );
 
 CREATE TABLE clams.borrow_transactions (
@@ -70,7 +79,6 @@ CREATE TABLE clams.borrow_transactions (
     expected_return_date    TIMESTAMP,
     actual_return_date      TIMESTAMP,
     remarks                 TEXT,
-
     CONSTRAINT chk_borrow_target CHECK (
         (equipment_id IS NOT NULL AND peripheral_id IS NULL)
         OR

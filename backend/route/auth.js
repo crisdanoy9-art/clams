@@ -1,9 +1,11 @@
+// backend/route/auth.js
 import { Router } from "express";
 import { Login, Register } from "../controller/authController.js";
 
-const authRouter = Router();
+const router = Router();
 
-authRouter.post("/register", Register);
-authRouter.post("/login", Login);
+// Public routes (no token needed)
+router.post("/login", Login);
+router.post("/register", Register);
 
-export default authRouter;
+export default router;

@@ -1,23 +1,20 @@
-import React, { useState } from "react";
+// frontend/src/pages/reports.jsx
+import React, { useState, useEffect } from "react";
 import {
   AlertTriangle,
   Search,
   Plus,
-  MoreHorizontal,
   CheckCircle,
   Clock,
   XCircle,
   User,
-  Monitor,
-  Calendar,
-  MessageSquare,
   Eye,
   Send,
-  Filter,
   FileText,
-  History,
   List,
 } from "lucide-react";
+import axiosInstance from "../lib/axios";
+import toast from "react-hot-toast";
 
 const STATUS_STYLES = {
   open: "bg-amber-50 text-amber-700",
@@ -25,7 +22,6 @@ const STATUS_STYLES = {
   resolved: "bg-emerald-50 text-emerald-700",
   rejected: "bg-red-50 text-red-600",
 };
-
 const STATUS_LABELS = {
   open: "Open",
   in_progress: "In Progress",
@@ -33,134 +29,9 @@ const STATUS_LABELS = {
   rejected: "Rejected",
 };
 
-// Mock data for damage reports
-const MOCK_DAMAGE_REPORTS = [
-  {
-    id: 1,
-    report_id: "DR-001",
-    subject: "Broken Monitor Screen",
-    description:
-      "The monitor in CCS Lab 1 station 5 has a cracked screen. Display shows lines and flickering.",
-    equipment_id: 1,
-    equipment_name: "Desktop Computer",
-    equipment_asset_tag: "A-001",
-    instructor_id: "user-001",
-    instructor_name: "John Doe",
-    instructor_email: "john.doe@university.edu",
-    status: "open",
-    admin_remarks: null,
-    created_at: "2026-05-08 09:30:00",
-    resolved_at: null,
-  },
-  {
-    id: 2,
-    report_id: "DR-002",
-    subject: "Keyboard Not Responding",
-    description:
-      "The keyboard at station 3 has multiple keys that are not responding. Some keys are stuck.",
-    equipment_id: null,
-    equipment_name: "Mechanical Keyboard",
-    equipment_asset_tag: "P-001",
-    instructor_id: "user-002",
-    instructor_name: "Jane Smith",
-    instructor_email: "jane.smith@university.edu",
-    status: "in_progress",
-    admin_remarks: "Replacement keyboard ordered. Will be delivered tomorrow.",
-    created_at: "2026-05-07 14:15:00",
-    resolved_at: null,
-  },
-  {
-    id: 3,
-    report_id: "DR-003",
-    subject: "Projector Not Turning On",
-    description:
-      "The projector in CCS Lab 2 won't power on. Checked power cable and outlet, both working.",
-    equipment_id: 3,
-    equipment_name: "Projector",
-    equipment_asset_tag: "A-003",
-    instructor_id: "user-003",
-    instructor_name: "Mike Johnson",
-    instructor_email: "mike.johnson@university.edu",
-    status: "resolved",
-    admin_remarks: "Bulb replaced. Projector working normally now.",
-    created_at: "2026-05-05 10:00:00",
-    resolved_at: "2026-05-06 15:30:00",
-  },
-  {
-    id: 4,
-    report_id: "DR-004",
-    subject: "Mouse Double Clicking Issue",
-    description:
-      "The mouse is registering double clicks when single clicking. Very difficult to use.",
-    equipment_id: null,
-    equipment_name: "Wireless Mouse",
-    equipment_asset_tag: "P-002",
-    instructor_id: "user-001",
-    instructor_name: "John Doe",
-    instructor_email: "john.doe@university.edu",
-    status: "rejected",
-    admin_remarks:
-      "Issue not reproducible after testing. Please provide more details or video evidence.",
-    created_at: "2026-05-06 11:20:00",
-    resolved_at: "2026-05-07 09:00:00",
-  },
-  {
-    id: 5,
-    report_id: "DR-005",
-    subject: "Printer Paper Jam",
-    description:
-      "The printer in Network Lab has a persistent paper jam. Cleared it twice but keeps jamming.",
-    equipment_id: 6,
-    equipment_name: "Laser Printer",
-    equipment_asset_tag: "P-006",
-    instructor_id: "user-004",
-    instructor_name: "Sarah Wilson",
-    instructor_email: "sarah.wilson@university.edu",
-    status: "open",
-    admin_remarks: null,
-    created_at: "2026-05-08 13:45:00",
-    resolved_at: null,
-  },
-  {
-    id: 6,
-    report_id: "DR-006",
-    subject: "Computer Slow Performance",
-    description:
-      "Computer at station 8 is extremely slow. Takes 10+ minutes to boot up.",
-    equipment_id: 2,
-    equipment_name: "Desktop Computer",
-    equipment_asset_tag: "A-002",
-    instructor_id: "user-002",
-    instructor_name: "Jane Smith",
-    instructor_email: "jane.smith@university.edu",
-    status: "in_progress",
-    admin_remarks: "Running diagnostics. Will update once complete.",
-    created_at: "2026-05-07 08:30:00",
-    resolved_at: null,
-  },
-];
-
-// Mock equipment list for the report form
-const MOCK_EQUIPMENT = [
-  { id: 1, name: "Desktop Computer", asset_tag: "A-001", lab: "CCS Lab 1" },
-  { id: 2, name: "Desktop Computer", asset_tag: "A-002", lab: "CCS Lab 1" },
-  { id: 3, name: "Projector", asset_tag: "A-003", lab: "CCS Lab 2" },
-  { id: 4, name: "Laptop", asset_tag: "A-004", lab: "Research Lab" },
-  { id: 5, name: "UPS", asset_tag: "A-005", lab: "CCS Lab 3" },
-  { id: 6, name: "Switch", asset_tag: "A-006", lab: "Network Lab" },
-];
-
-const MOCK_PERIPHERALS = [
-  { id: 1, name: "Mechanical Keyboard", asset_tag: "P-001", lab: "CCS Lab 1" },
-  { id: 2, name: "Wireless Mouse", asset_tag: "P-002", lab: "CCS Lab 1" },
-  { id: 3, name: "Document Camera", asset_tag: "P-003", lab: "CCS Lab 2" },
-  { id: 4, name: "Headset", asset_tag: "P-004", lab: "Research Lab" },
-  { id: 5, name: "Microphone", asset_tag: "P-005", lab: "CCS Lab 3" },
-  { id: 6, name: "Laser Printer", asset_tag: "P-006", lab: "Network Lab" },
-];
-
-export default function DamageReports({ userRole }) {
-  const [damageReports, setDamageReports] = useState(MOCK_DAMAGE_REPORTS);
+export default function DamageReports({ userRole, currentUser }) {
+  const [reports, setReports] = useState([]);
+  const [equipment, setEquipment] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -168,153 +39,150 @@ export default function DamageReports({ userRole }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [adminRemark, setAdminRemark] = useState("");
   const [newStatus, setNewStatus] = useState("");
-
-  // For instructor view
-  const [instructorView, setInstructorView] = useState("my_reports"); // "my_reports" or "resolved"
-
-  // For new report form
+  const [instructorView, setInstructorView] = useState("my_reports");
+  const [loading, setLoading] = useState(true);
   const [newReport, setNewReport] = useState({
-    equipment_type: "equipment",
     equipment_id: "",
     subject: "",
     description: "",
   });
 
-  // Get current user (mock - in real app, this would come from auth context)
-  const currentUser = {
-    id: "user-001",
-    name: "John Doe",
-    email: "john.doe@university.edu",
-    role: userRole,
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [reportsRes, equipmentRes] = await Promise.all([
+        axiosInstance.get("/reports"),
+        axiosInstance.get("/inventory"),
+      ]);
+      setReports(reportsRes.data || []);
+      setEquipment(equipmentRes.data || []);
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to load reports");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrentUserId = () => {
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      try {
+        return JSON.parse(userData).user_id;
+      } catch (e) {}
+    }
+    return currentUser?.user_id;
   };
 
   // Filter reports based on user role
-  let filteredReports = damageReports;
-
+  let filteredReports = reports;
   if (userRole === "instructor") {
+    const userId = getCurrentUserId();
     if (instructorView === "my_reports") {
-      filteredReports = damageReports.filter(
-        (r) => r.instructor_id === currentUser.id,
-      );
+      filteredReports = reports.filter((r) => r.instructor_id === userId);
     } else if (instructorView === "resolved") {
-      filteredReports = damageReports.filter(
-        (r) => r.instructor_id === currentUser.id && r.status === "resolved",
+      filteredReports = reports.filter(
+        (r) => r.instructor_id === userId && r.report_status === "resolved",
       );
     }
   }
 
-  // Apply search and status filters
-  const filtered = filteredReports.filter((report) => {
-    const matchSearch =
-      report.subject.toLowerCase().includes(search.toLowerCase()) ||
-      report.report_id.toLowerCase().includes(search.toLowerCase()) ||
-      report.equipment_name.toLowerCase().includes(search.toLowerCase());
-    const matchStatus =
-      filterStatus === "all" || report.status === filterStatus;
-    return matchSearch && matchStatus;
-  });
+  const filtered = filteredReports.filter(
+    (r) =>
+      r.subject?.toLowerCase().includes(search.toLowerCase()) ||
+      r.report_id?.toString().includes(search) ||
+      r.equipment_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.reporter_name?.toLowerCase().includes(search.toLowerCase()),
+  );
 
-  // Calculate statistics based on user role
+  // Calculate statistics
   let stats = {};
   if (userRole === "admin") {
-    const openReports = damageReports.filter((r) => r.status === "open").length;
-    const inProgressReports = damageReports.filter(
-      (r) => r.status === "in_progress",
-    ).length;
-    const resolvedReports = damageReports.filter(
-      (r) => r.status === "resolved",
-    ).length;
     stats = {
-      openReports,
-      inProgressReports,
-      resolvedReports,
-      total: damageReports.length,
+      openReports: reports.filter((r) => r.report_status === "open").length,
+      inProgressReports: reports.filter(
+        (r) => r.report_status === "in_progress",
+      ).length,
+      resolvedReports: reports.filter((r) => r.report_status === "resolved")
+        .length,
+      rejectedReports: reports.filter((r) => r.report_status === "rejected")
+        .length,
+      total: reports.length,
     };
   } else {
-    const myReports = damageReports.filter(
-      (r) => r.instructor_id === currentUser.id,
-    );
-    const myOpenReports = myReports.filter(
-      (r) => r.status === "open" || r.status === "in_progress",
-    ).length;
-    const myResolvedReports = myReports.filter(
-      (r) => r.status === "resolved",
-    ).length;
-    stats = { myReports: myReports.length, myOpenReports, myResolvedReports };
+    const userId = getCurrentUserId();
+    const myReports = reports.filter((r) => r.instructor_id === userId);
+    stats = {
+      myReports: myReports.length,
+      myOpenReports: myReports.filter(
+        (r) => r.report_status === "open" || r.report_status === "in_progress",
+      ).length,
+      myResolvedReports: myReports.filter((r) => r.report_status === "resolved")
+        .length,
+    };
   }
 
-  const handleUpdateReport = () => {
-    if (selectedReport && adminRemark) {
-      setDamageReports((prev) =>
-        prev.map((report) =>
-          report.id === selectedReport.id
-            ? {
-                ...report,
-                status: newStatus || report.status,
-                admin_remarks: adminRemark,
-                resolved_at:
-                  newStatus === "resolved"
-                    ? new Date().toISOString().slice(0, 19).replace("T", " ")
-                    : report.resolved_at,
-              }
-            : report,
-        ),
-      );
-      setIsViewModalOpen(false);
-      setSelectedReport(null);
-      setAdminRemark("");
-      setNewStatus("");
+  const handleUpdateReport = async () => {
+    if (selectedReport) {
+      try {
+        await axiosInstance.put(
+          `/update/damage_reports/${selectedReport.report_id}`,
+          {
+            data: {
+              status: newStatus,
+              admin_remarks: adminRemark,
+              resolved_at:
+                newStatus === "resolved" ? new Date().toISOString() : null,
+            },
+          },
+        );
+        toast.success("Report updated successfully");
+        setIsViewModalOpen(false);
+        fetchData();
+      } catch (error) {
+        toast.error("Failed to update report");
+      }
     }
   };
 
-  const handleSubmitReport = () => {
+  // In reports.jsx - handleSubmitReport function
+  const handleSubmitReport = async () => {
     if (
       !newReport.subject ||
       !newReport.description ||
       !newReport.equipment_id
     ) {
-      alert("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
-
-    const selectedEquipment =
-      newReport.equipment_type === "equipment"
-        ? MOCK_EQUIPMENT.find((e) => e.id === parseInt(newReport.equipment_id))
-        : MOCK_PERIPHERALS.find(
-            (p) => p.id === parseInt(newReport.equipment_id),
-          );
-
-    const newReportObj = {
-      id: damageReports.length + 1,
-      report_id: `DR-${String(damageReports.length + 1).padStart(3, "0")}`,
-      subject: newReport.subject,
-      description: newReport.description,
-      equipment_id: parseInt(newReport.equipment_id),
-      equipment_name: selectedEquipment?.name,
-      equipment_asset_tag: selectedEquipment?.asset_tag,
-      instructor_id: currentUser.id,
-      instructor_name: currentUser.name,
-      instructor_email: currentUser.email,
-      status: "open",
-      admin_remarks: null,
-      created_at: new Date().toISOString().slice(0, 19).replace("T", " "),
-      resolved_at: null,
-    };
-
-    setDamageReports((prev) => [...prev, newReportObj]);
-    setIsFormOpen(false);
-    setNewReport({
-      equipment_type: "equipment",
-      equipment_id: "",
-      subject: "",
-      description: "",
-    });
+    try {
+      // DON'T send instructor_id - backend will auto-fill from JWT
+      await axiosInstance.post("/create/damage_reports", {
+        data: {
+          equipment_id: parseInt(newReport.equipment_id),
+          subject: newReport.subject,
+          description: newReport.description,
+          status: "open",
+          // instructor_id will be added by backend from JWT token
+        },
+      });
+      toast.success("Damage report submitted successfully");
+      setIsFormOpen(false);
+      setNewReport({ equipment_id: "", subject: "", description: "" });
+      fetchData();
+    } catch (error) {
+      toast.error("Failed to submit report");
+    }
   };
 
   const openViewModal = (report) => {
     setSelectedReport(report);
     setAdminRemark(report.admin_remarks || "");
-    setNewStatus(report.status);
+    setNewStatus(report.report_status);
     setIsViewModalOpen(true);
   };
 
@@ -332,6 +200,14 @@ export default function DamageReports({ userRole }) {
         return <Clock size={14} />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -358,13 +234,13 @@ export default function DamageReports({ userRole }) {
               placeholder="Search reports..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition w-56"
+              className="pl-9 pr-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl w-56"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition cursor-pointer"
+            className="px-3 py-2.5 text-sm bg-white border border-slate-200 rounded-xl cursor-pointer"
           >
             <option value="all">All Status</option>
             <option value="open">Open</option>
@@ -375,30 +251,28 @@ export default function DamageReports({ userRole }) {
           {userRole === "instructor" && (
             <button
               onClick={() => setIsFormOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700"
             >
-              <Plus size={16} />
-              New Report
+              <Plus size={16} /> New Report
             </button>
           )}
         </div>
       </div>
 
-      {/* Summary Cards */}
-      {userRole === "admin" ? (
+      {/* Summary Cards for Admin */}
+      {userRole === "admin" && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
               <AlertTriangle size={20} className="text-amber-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 Open
               </p>
               <p className="text-2xl font-bold text-amber-600">
                 {stats.openReports}
               </p>
-              <p className="text-xs text-slate-400">Awaiting action</p>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -406,13 +280,12 @@ export default function DamageReports({ userRole }) {
               <Clock size={20} className="text-blue-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 In Progress
               </p>
               <p className="text-2xl font-bold text-blue-600">
                 {stats.inProgressReports}
               </p>
-              <p className="text-xs text-slate-400">Being addressed</p>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -420,13 +293,12 @@ export default function DamageReports({ userRole }) {
               <CheckCircle size={20} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 Resolved
               </p>
               <p className="text-2xl font-bold text-emerald-600">
                 {stats.resolvedReports}
               </p>
-              <p className="text-xs text-slate-400">Completed</p>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -434,28 +306,29 @@ export default function DamageReports({ userRole }) {
               <FileText size={20} className="text-slate-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 Total
               </p>
               <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-              <p className="text-xs text-slate-400">All reports</p>
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Summary Cards for Instructor */}
+      {userRole === "instructor" && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
               <FileText size={20} className="text-slate-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 My Reports
               </p>
               <p className="text-2xl font-bold text-slate-900">
                 {stats.myReports}
               </p>
-              <p className="text-xs text-slate-400">Total submitted</p>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -463,13 +336,12 @@ export default function DamageReports({ userRole }) {
               <Clock size={20} className="text-amber-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 Pending
               </p>
               <p className="text-2xl font-bold text-amber-600">
                 {stats.myOpenReports}
               </p>
-              <p className="text-xs text-slate-400">Awaiting resolution</p>
             </div>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -477,13 +349,12 @@ export default function DamageReports({ userRole }) {
               <CheckCircle size={20} className="text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+              <p className="text-xs font-medium text-slate-400 uppercase">
                 Resolved
               </p>
               <p className="text-2xl font-bold text-emerald-600">
                 {stats.myResolvedReports}
               </p>
-              <p className="text-xs text-slate-400">Completed</p>
             </div>
           </div>
         </div>
@@ -494,7 +365,7 @@ export default function DamageReports({ userRole }) {
         <div className="flex gap-2 border-b border-slate-100">
           <button
             onClick={() => setInstructorView("my_reports")}
-            className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
               instructorView === "my_reports"
                 ? "text-slate-900 border-b-2 border-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -507,7 +378,7 @@ export default function DamageReports({ userRole }) {
           </button>
           <button
             onClick={() => setInstructorView("resolved")}
-            className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
               instructorView === "resolved"
                 ? "text-slate-900 border-b-2 border-slate-900"
                 : "text-slate-400 hover:text-slate-600"
@@ -527,24 +398,24 @@ export default function DamageReports({ userRole }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Report ID
                 </th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Subject
                 </th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Equipment
                 </th>
                 {userRole === "admin" && (
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                     Reported By
                   </th>
                 )}
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Status
                 </th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-400 uppercase">
                   Created
                 </th>
                 <th className="px-6 py-4" />
@@ -563,11 +434,11 @@ export default function DamageReports({ userRole }) {
               ) : (
                 filtered.map((report) => (
                   <tr
-                    key={report.id}
+                    key={report.report_id}
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">
-                      {report.report_id}
+                      DR-{report.report_id}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -585,7 +456,7 @@ export default function DamageReports({ userRole }) {
                           {report.equipment_name}
                         </p>
                         <p className="text-xs text-slate-400 font-mono">
-                          {report.equipment_asset_tag}
+                          {report.asset_tag}
                         </p>
                       </div>
                     </td>
@@ -596,26 +467,27 @@ export default function DamageReports({ userRole }) {
                             <User size={12} className="text-slate-500" />
                           </div>
                           <span className="text-sm text-slate-600">
-                            {report.instructor_name}
+                            {report.reporter_name}
                           </span>
                         </div>
                       </td>
                     )}
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[report.status]}`}
+                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[report.report_status]}`}
                       >
-                        {getStatusIcon(report.status)}
-                        {STATUS_LABELS[report.status]}
+                        {getStatusIcon(report.report_status)}
+                        {STATUS_LABELS[report.report_status]}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-400 text-xs">
-                      {report.created_at.split(" ")[0]}
+                      {new Date(report.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => openViewModal(report)}
-                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                        className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                        title="View Details"
                       >
                         <Eye size={16} />
                       </button>
@@ -632,98 +504,91 @@ export default function DamageReports({ userRole }) {
       {isViewModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">
+                <h2 className="text-lg font-semibold text-slate-900">
                   Damage Report
                 </h2>
                 <p className="text-sm text-slate-500 font-mono">
-                  {selectedReport.report_id}
+                  DR-{selectedReport.report_id}
                 </p>
               </div>
               <button
                 onClick={() => setIsViewModalOpen(false)}
-                className="p-2 rounded-lg hover:bg-slate-100 transition"
+                className="p-2 rounded-lg hover:bg-slate-100"
               >
                 <XCircle size={20} className="text-slate-400" />
               </button>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Report Details */}
-              <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Subject
+                </label>
+                <p className="text-base font-semibold text-slate-900 mt-1">
+                  {selectedReport.subject}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Description
+                </label>
+                <p className="text-sm text-slate-600 mt-1 bg-slate-50 p-3 rounded-lg">
+                  {selectedReport.description}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Subject
+                    Equipment
                   </label>
-                  <p className="text-base font-semibold text-slate-900 mt-1">
-                    {selectedReport.subject}
+                  <p className="text-sm text-slate-700 mt-1 font-medium">
+                    {selectedReport.equipment_name}
+                  </p>
+                  <p className="text-xs text-slate-400 font-mono">
+                    {selectedReport.asset_tag}
                   </p>
                 </div>
-
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Description
+                    Reported By
                   </label>
-                  <p className="text-sm text-slate-600 mt-1 bg-slate-50 p-3 rounded-lg">
-                    {selectedReport.description}
+                  <p className="text-sm text-slate-700 mt-1">
+                    {selectedReport.reporter_name}
                   </p>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                    Created At
+                  </label>
+                  <p className="text-sm text-slate-700 mt-1">
+                    {new Date(selectedReport.created_at).toLocaleString()}
+                  </p>
+                </div>
+                {selectedReport.resolved_at && (
                   <div>
                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                      Equipment
-                    </label>
-                    <p className="text-sm text-slate-700 mt-1 font-medium">
-                      {selectedReport.equipment_name}
-                    </p>
-                    <p className="text-xs text-slate-400 font-mono">
-                      {selectedReport.equipment_asset_tag}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                      Reported By
+                      Resolved At
                     </label>
                     <p className="text-sm text-slate-700 mt-1">
-                      {selectedReport.instructor_name}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {selectedReport.instructor_email}
+                      {new Date(selectedReport.resolved_at).toLocaleString()}
                     </p>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                      Created At
-                    </label>
-                    <p className="text-sm text-slate-700 mt-1">
-                      {selectedReport.created_at}
-                    </p>
-                  </div>
-                  {selectedReport.resolved_at && (
-                    <div>
-                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                        Resolved At
-                      </label>
-                      <p className="text-sm text-slate-700 mt-1">
-                        {selectedReport.resolved_at}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Admin Section */}
               {userRole === "admin" && (
                 <div className="border-t border-slate-100 pt-6 space-y-4">
-                  <h3 className="text-lg font-semibold text-slate-900">
+                  <h3 className="text-base font-semibold text-slate-900">
                     Admin Actions
                   </h3>
-
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1.5">
                       Update Status
@@ -731,7 +596,7 @@ export default function DamageReports({ userRole }) {
                     <select
                       value={newStatus}
                       onChange={(e) => setNewStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
                     >
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
@@ -739,7 +604,6 @@ export default function DamageReports({ userRole }) {
                       <option value="rejected">Rejected</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-xs font-medium text-slate-600 mb-1.5">
                       Admin Remarks
@@ -749,21 +613,19 @@ export default function DamageReports({ userRole }) {
                       onChange={(e) => setAdminRemark(e.target.value)}
                       rows={4}
                       placeholder="Add your remarks here..."
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition resize-none"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl resize-none"
                     />
                   </div>
-
                   <button
                     onClick={handleUpdateReport}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors"
                   >
-                    <Send size={16} />
-                    Update Report
+                    <Send size={16} /> Update Report
                   </button>
                 </div>
               )}
 
-              {/* Admin Remarks Display (for instructors) */}
+              {/* Admin Remarks Display for Instructors */}
               {userRole !== "admin" && selectedReport.admin_remarks && (
                 <div className="border-t border-slate-100 pt-6">
                   <h3 className="text-sm font-semibold text-slate-900 mb-2">
@@ -784,9 +646,9 @@ export default function DamageReports({ userRole }) {
       {/* New Report Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4">
-              <h2 className="text-xl font-bold text-slate-900">
+          <div className="bg-white rounded-2xl w-full max-w-lg">
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5">
+              <h2 className="text-lg font-semibold text-slate-900">
                 Report Damage
               </h2>
               <p className="text-sm text-slate-500">
@@ -797,49 +659,19 @@ export default function DamageReports({ userRole }) {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Equipment Type
-                </label>
-                <select
-                  value={newReport.equipment_type}
-                  onChange={(e) =>
-                    setNewReport({
-                      ...newReport,
-                      equipment_type: e.target.value,
-                      equipment_id: "",
-                    })
-                  }
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-                >
-                  <option value="equipment">Equipment</option>
-                  <option value="peripheral">Peripheral</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  {newReport.equipment_type === "equipment"
-                    ? "Equipment"
-                    : "Peripheral"}
+                  Equipment *
                 </label>
                 <select
                   value={newReport.equipment_id}
                   onChange={(e) =>
                     setNewReport({ ...newReport, equipment_id: e.target.value })
                   }
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
                 >
-                  <option value="">
-                    Select{" "}
-                    {newReport.equipment_type === "equipment"
-                      ? "equipment"
-                      : "peripheral"}
-                  </option>
-                  {(newReport.equipment_type === "equipment"
-                    ? MOCK_EQUIPMENT
-                    : MOCK_PERIPHERALS
-                  ).map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} ({item.asset_tag}) - {item.lab}
+                  <option value="">Select Equipment</option>
+                  {equipment.map((item) => (
+                    <option key={item.equipment_id} value={item.equipment_id}>
+                      {item.item_name} ({item.asset_tag})
                     </option>
                   ))}
                 </select>
@@ -847,7 +679,7 @@ export default function DamageReports({ userRole }) {
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Subject
+                  Subject *
                 </label>
                 <input
                   type="text"
@@ -856,13 +688,13 @@ export default function DamageReports({ userRole }) {
                     setNewReport({ ...newReport, subject: e.target.value })
                   }
                   placeholder="Brief description of the issue"
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                  Description
+                  Description *
                 </label>
                 <textarea
                   value={newReport.description}
@@ -871,21 +703,21 @@ export default function DamageReports({ userRole }) {
                   }
                   rows={4}
                   placeholder="Provide detailed information about the damage..."
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition resize-none"
+                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl resize-none"
                 />
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex justify-end gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-5 flex justify-end gap-3">
               <button
                 onClick={() => setIsFormOpen(false)}
-                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition"
+                className="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmitReport}
-                className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition"
+                className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 rounded-xl hover:bg-slate-700 transition"
               >
                 Submit Report
               </button>

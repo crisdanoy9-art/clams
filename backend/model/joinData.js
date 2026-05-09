@@ -1,8 +1,8 @@
+// backend/model/joinData.js
 import pool from "../db.js";
 
 // 1. Fetch Equipment with Lab and Category details
 export const getFullInventory = async () => {
-  console.log("Attempting to fetch inventory..."); // If you don't see this, the controller isn't calling this function
   const query = `
     SELECT 
         e.equipment_id,
@@ -13,6 +13,8 @@ export const getFullInventory = async () => {
         e.status,
         e.specs,
         e.purchase_date,
+        e.lab_id,
+        e.category_id,
         c.category_name,
         l.lab_name,
         l.room_number,
@@ -27,7 +29,35 @@ export const getFullInventory = async () => {
   return rows;
 };
 
-// 2. Fetch Transactions (The "Big Join")
+// 2. Fetch Peripherals with Lab, Equipment, and Category details
+export const getFullPeripherals = async () => {
+  const query = `
+    SELECT 
+        p.peripheral_id,
+        p.item_name,
+        p.brand,
+        p.working_count,
+        p.damaged_count,
+        p.lab_id,
+        p.equipment_id,
+        p.category_id,
+        c.category_name,
+        l.lab_name,
+        l.room_number,
+        l.building,
+        e.asset_tag as equipment_asset_tag,
+        e.item_name as equipment_name
+    FROM clams.peripherals p
+    LEFT JOIN clams.categories c ON p.category_id = c.category_id
+    LEFT JOIN clams.laboratories l ON p.lab_id = l.lab_id
+    LEFT JOIN clams.equipment e ON p.equipment_id = e.equipment_id
+    ORDER BY p.item_name;
+  `;
+  const { rows } = await pool.query(query);
+  return rows;
+};
+
+// 3. Fetch Transactions
 export const getTransactionHistory = async () => {
   const query = `
     SELECT 
@@ -37,9 +67,11 @@ export const getTransactionHistory = async () => {
         t.status AS transaction_status,
         t.borrow_date,
         t.expected_return_date,
+        t.actual_return_date,
+        t.remarks,
         u.first_name || ' ' || u.last_name AS instructor_full_name,
         COALESCE(e.item_name, p.item_name) AS item_name,
-        e.asset_tag,
+        COALESCE(e.asset_tag, 'PERIPHERAL') AS asset_tag,
         COALESCE(c_e.category_name, c_p.category_name) AS category_name
     FROM clams.borrow_transactions t
     LEFT JOIN clams.users u ON t.instructor_id = u.user_id
@@ -53,7 +85,7 @@ export const getTransactionHistory = async () => {
   return rows;
 };
 
-// 3. Fetch Damage Reports
+// 4. Fetch Damage Reports
 export const getDamageReports = async () => {
   const query = `
     SELECT 
@@ -62,8 +94,10 @@ export const getDamageReports = async () => {
         dr.description,
         dr.status AS report_status,
         dr.created_at,
+        dr.resolved_at,
+        dr.admin_remarks,
         u.first_name || ' ' || u.last_name AS reporter_name,
-        e.item_name,
+        e.item_name AS equipment_name,
         e.asset_tag,
         l.lab_name,
         l.room_number
