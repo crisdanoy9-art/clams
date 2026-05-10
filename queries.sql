@@ -13,30 +13,30 @@ CREATE TABLE clams.laboratories (
     lab_name        VARCHAR(100) NOT NULL,
     room_number     VARCHAR(50),
     building        VARCHAR(100),
-    total_stations  INTEGER,
+    total_stations  INTEGER DEFAULT 0,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Users
 CREATE TABLE clams.users (
     user_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_number       VARCHAR(50)  UNIQUE NOT NULL,
-    username        VARCHAR(50)  UNIQUE NOT NULL,
-    password_hash   TEXT         NOT NULL,
+    id_number       VARCHAR(50) UNIQUE NOT NULL,
+    username        VARCHAR(50) UNIQUE NOT NULL,
+    password_hash   TEXT NOT NULL,
     first_name      VARCHAR(100),
     last_name       VARCHAR(100),
     email           VARCHAR(150) UNIQUE,
-    role            VARCHAR(20),
+    role            VARCHAR(20) DEFAULT 'instructor',
     profile_img     TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_deleted      BOOLEAN DEFAULT FALSE
 );
 
--- Equipment
+-- Equipment (with pc_name instead of asset_tag)
 CREATE TABLE clams.equipment (
     equipment_id    SERIAL PRIMARY KEY,
-    asset_tag       VARCHAR(100) UNIQUE,
+    pc_name         VARCHAR(100) UNIQUE,
     item_name       VARCHAR(255) NOT NULL,
     category_id     INTEGER REFERENCES clams.categories(category_id),
     brand           VARCHAR(100),
@@ -51,7 +51,7 @@ CREATE TABLE clams.equipment (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Peripherals – each row is ONE physical item
+-- Peripherals
 CREATE TABLE clams.peripherals (
     peripheral_id   SERIAL PRIMARY KEY,
     equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
@@ -70,7 +70,7 @@ CREATE TABLE clams.peripherals (
 -- Borrow transactions
 CREATE TABLE clams.borrow_transactions (
     transaction_id          SERIAL PRIMARY KEY,
-    instructor_id           UUID    REFERENCES clams.users(user_id),
+    instructor_id           UUID REFERENCES clams.users(user_id),
     equipment_id            INTEGER REFERENCES clams.equipment(equipment_id),
     peripheral_id           INTEGER REFERENCES clams.peripherals(peripheral_id),
     quantity                INTEGER DEFAULT 1,
@@ -90,7 +90,7 @@ CREATE TABLE clams.borrow_transactions (
 -- Damage reports
 CREATE TABLE clams.damage_reports (
     report_id       SERIAL PRIMARY KEY,
-    instructor_id   UUID    REFERENCES clams.users(user_id),
+    instructor_id   UUID REFERENCES clams.users(user_id),
     equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
     subject         VARCHAR(255),
     description     TEXT,
@@ -110,14 +110,10 @@ CREATE TABLE clams.activity_logs (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================================
--- TRIGGER: automatically update laboratories.total_stations
--- based on active (non‑deleted) equipment in the lab
--- ============================================================
+-- Trigger to update total_stations
 CREATE OR REPLACE FUNCTION clams.update_lab_total_stations()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Insert: new equipment added
     IF TG_OP = 'INSERT' THEN
         UPDATE clams.laboratories
         SET total_stations = (
@@ -126,7 +122,6 @@ BEGIN
         )
         WHERE lab_id = NEW.lab_id;
     
-    -- Soft delete: is_deleted changed from false → true
     ELSIF TG_OP = 'UPDATE' AND OLD.is_deleted = false AND NEW.is_deleted = true THEN
         UPDATE clams.laboratories
         SET total_stations = (
@@ -135,16 +130,14 @@ BEGIN
         )
         WHERE lab_id = NEW.lab_id;
     
-    -- Lab changed: equipment moved to another lab
     ELSIF TG_OP = 'UPDATE' AND OLD.lab_id IS DISTINCT FROM NEW.lab_id THEN
-        -- Old lab
         UPDATE clams.laboratories
         SET total_stations = (
             SELECT COUNT(*) FROM clams.equipment
             WHERE lab_id = OLD.lab_id AND is_deleted = false
         )
         WHERE lab_id = OLD.lab_id;
-        -- New lab
+        
         UPDATE clams.laboratories
         SET total_stations = (
             SELECT COUNT(*) FROM clams.equipment

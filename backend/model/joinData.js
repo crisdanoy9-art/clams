@@ -1,11 +1,11 @@
 import pool from "../db.js";
 
-// Equipment with lab & category
+// Equipment with lab & category (using pc_name)
 export const getFullInventory = async () => {
   const query = `
     SELECT 
         e.equipment_id,
-        e.asset_tag,
+        e.pc_name,
         e.item_name,
         e.brand,
         e.model,
@@ -13,6 +13,7 @@ export const getFullInventory = async () => {
         e.specs,
         e.purchase_date,
         e.lab_id,
+        e.serial_number,
         c.category_name,
         l.lab_name,
         l.room_number,
@@ -27,14 +28,14 @@ export const getFullInventory = async () => {
   return rows;
 };
 
-// Peripherals – individual items with counts (grouped for summary)
+// Peripherals summary
 export const getPeripheralsSummary = async () => {
   const query = `
     SELECT 
       peripheral_id, equipment_id, lab_id, category_id, item_name, brand, status, updated_at,
       c.category_name,
       l.lab_name,
-      e.asset_tag as equipment_asset_tag
+      e.pc_name as equipment_pc_name
     FROM clams.peripherals p
     LEFT JOIN clams.categories c ON p.category_id = c.category_id
     LEFT JOIN clams.laboratories l ON p.lab_id = l.lab_id
@@ -46,7 +47,7 @@ export const getPeripheralsSummary = async () => {
   return rows;
 };
 
-// For dashboard counts
+// Peripheral counts for dashboard
 export const getPeripheralCounts = async () => {
   const result = await pool.query(`
     SELECT 
@@ -59,6 +60,7 @@ export const getPeripheralCounts = async () => {
   return result.rows[0];
 };
 
+// Transaction history with pc_name
 export const getTransactionHistory = async () => {
   const query = `
     SELECT 
@@ -75,7 +77,7 @@ export const getTransactionHistory = async () => {
         t.peripheral_id,
         u.first_name || ' ' || u.last_name AS instructor_name,
         COALESCE(e.item_name, p.item_name) AS item_name,
-        COALESCE(e.asset_tag, 'Peripheral') AS asset_tag
+        COALESCE(e.pc_name, 'Peripheral') AS pc_name
     FROM clams.borrow_transactions t
     LEFT JOIN clams.users u ON t.instructor_id = u.user_id
     LEFT JOIN clams.equipment e ON t.equipment_id = e.equipment_id
@@ -86,6 +88,7 @@ export const getTransactionHistory = async () => {
   return rows;
 };
 
+// Damage reports with pc_name
 export const getDamageReports = async () => {
   const query = `
     SELECT 
@@ -100,7 +103,7 @@ export const getDamageReports = async () => {
         dr.equipment_id,
         u.first_name || ' ' || u.last_name AS reporter_name,
         e.item_name AS equipment_name,
-        e.asset_tag,
+        e.pc_name,
         l.lab_name,
         l.room_number
     FROM clams.damage_reports dr
