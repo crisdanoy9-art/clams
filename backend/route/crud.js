@@ -94,6 +94,147 @@ crud.post("/create/peripherals/bulk", verifyToken, async (req, res) => {
     client.release();
   }
 });
+
+// Get peripherals available in a lab (stock) – not attached to any equipment
+crud.get("/peripherals/stock/:labId", async (req, res) => {
+  const { labId } = req.params;
+  try {
+    const result = await pool.query(
+      `
+      SELECT peripheral_id, item_name, brand, category_id, status
+      FROM clams.peripherals
+      WHERE lab_id = $1 AND equipment_id IS NULL AND is_deleted = false
+      ORDER BY item_name
+    `,
+      [labId],
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get peripherals attached to a specific equipment
+crud.get("/equipment/:equipmentId/peripherals", async (req, res) => {
+  const { equipmentId } = req.params;
+  try {
+    const result = await pool.query(
+      `
+      SELECT p.peripheral_id, p.item_name, p.brand, p.status, c.category_name
+      FROM clams.peripherals p
+      LEFT JOIN clams.categories c ON p.category_id = c.category_id
+      WHERE p.equipment_id = $1 AND p.is_deleted = false
+    `,
+      [equipmentId],
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Attach a peripheral to equipment (move from stock to PC)
+crud.post(
+  "/equipment/:equipmentId/attach-peripheral",
+  verifyToken,
+  async (req, res) => {
+    const { equipmentId } = req.params;
+    const { peripheral_id } = req.body.data;
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Check peripheral exists, is in stock (equipment_id IS NULL) and belongs to the same lab as the equipment
+      const check = await client.query(
+        `
+      SELECT p.lab_id, e.lab_id as equipment_lab_id
+      FROM clams.peripherals p, clams.equipment e
+      WHERE p.peripheral_id = $1 AND e.equipment_id = $2
+    `,
+        [peripheral_id, equipmentId],
+      );
+      if (check.rows.length === 0)
+        throw new Error("Peripheral or equipment not found");
+      if (check.rows[0].lab_id !== check.rows[0].equipment_lab_id) {
+        throw new Error("Peripheral lab does not match equipment lab");
+      }
+      // Update peripheral: set equipment_id, keep status (default working)
+      await client.query(
+        `
+      UPDATE clams.peripherals SET equipment_id = $1 WHERE peripheral_id = $2
+    `,
+        [equipmentId, peripheral_id],
+      );
+      await client.query("COMMIT");
+      res.json({ success: true, message: "Peripheral attached" });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      res.status(400).json({ error: error.message });
+    } finally {
+      client.release();
+    }
+  },
+);
+
+// Detach peripheral (return to stock) – optionally change status
+crud.post(
+  "/equipment/:equipmentId/detach-peripheral",
+  verifyToken,
+  async (req, res) => {
+    const { equipmentId } = req.params;
+    const { peripheral_id, new_status } = req.body.data; // new_status optional
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // Verify peripheral is attached to this equipment
+      const check = await client.query(
+        `
+      SELECT peripheral_id FROM clams.peripherals
+      WHERE peripheral_id = $1 AND equipment_id = $2
+    `,
+        [peripheral_id, equipmentId],
+      );
+      if (check.rows.length === 0)
+        throw new Error("Peripheral not attached to this equipment");
+      // Update: remove equipment_id, optionally change status
+      let query = `UPDATE clams.peripherals SET equipment_id = NULL`;
+      const params = [peripheral_id];
+      if (new_status) {
+        query += `, status = $2`;
+        params.push(new_status);
+      }
+      query += ` WHERE peripheral_id = $1`;
+      await client.query(query, params);
+      await client.query("COMMIT");
+      res.json({ success: true, message: "Peripheral detached" });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      res.status(400).json({ error: error.message });
+    } finally {
+      client.release();
+    }
+  },
+);
+
+// Update peripheral status (working/damaged) – for attached peripherals
+crud.put("/peripherals/:peripheralId/status", verifyToken, async (req, res) => {
+  const { peripheralId } = req.params;
+  const { status } = req.body.data;
+  if (!["working", "damaged"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status" });
+  }
+  try {
+    await pool.query(
+      `
+      UPDATE clams.peripherals SET status = $1 WHERE peripheral_id = $2
+    `,
+      [status, peripheralId],
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Also keep your existing endpoints (equipment-list, laboratories, etc.)
 crud.get("/equipment-list", async (req, res) => {
   try {

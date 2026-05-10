@@ -59,7 +59,7 @@ CREATE TABLE clams.peripherals (
     category_id     INTEGER REFERENCES clams.categories(category_id),
     item_name       VARCHAR(255) NOT NULL,
     brand           VARCHAR(100),
-    status          VARCHAR(50) DEFAULT 'working',   -- 'working', 'damaged'
+    status          VARCHAR(50) DEFAULT 'working',
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_deleted      BOOLEAN DEFAULT FALSE,
     CONSTRAINT chk_peripheral_location CHECK (
@@ -109,3 +109,55 @@ CREATE TABLE clams.activity_logs (
     record_id       INTEGER,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- TRIGGER: automatically update laboratories.total_stations
+-- based on active (non‑deleted) equipment in the lab
+-- ============================================================
+CREATE OR REPLACE FUNCTION clams.update_lab_total_stations()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Insert: new equipment added
+    IF TG_OP = 'INSERT' THEN
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    
+    -- Soft delete: is_deleted changed from false → true
+    ELSIF TG_OP = 'UPDATE' AND OLD.is_deleted = false AND NEW.is_deleted = true THEN
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    
+    -- Lab changed: equipment moved to another lab
+    ELSIF TG_OP = 'UPDATE' AND OLD.lab_id IS DISTINCT FROM NEW.lab_id THEN
+        -- Old lab
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = OLD.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = OLD.lab_id;
+        -- New lab
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_lab_total_stations
+AFTER INSERT OR UPDATE OF is_deleted, lab_id ON clams.equipment
+FOR EACH ROW
+EXECUTE FUNCTION clams.update_lab_total_stations();

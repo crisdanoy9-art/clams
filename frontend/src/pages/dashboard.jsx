@@ -9,9 +9,75 @@ import {
   TrendingUp,
   CheckCircle2,
   Clock,
+  UserPlus,
+  Edit,
+  Trash2,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import axiosInstance from "../lib/axios";
 import toast from "react-hot-toast";
+
+const getActivityIcon = (action) => {
+  switch (action) {
+    case "CREATE":
+      return <UserPlus size={15} />;
+    case "UPDATE":
+      return <Edit size={15} />;
+    case "DELETE":
+      return <Trash2 size={15} />;
+    case "LOGIN":
+      return <LogIn size={15} />;
+    case "LOGOUT":
+      return <LogOut size={15} />;
+    case "BORROW":
+      return <ClipboardList size={15} />;
+    case "RETURN":
+      return <CheckCircle2 size={15} />;
+    case "REPORT":
+      return <AlertTriangle size={15} />;
+    default:
+      return <TrendingUp size={15} />;
+  }
+};
+
+const getActivityColor = (action) => {
+  switch (action) {
+    case "CREATE":
+      return "text-emerald-500";
+    case "UPDATE":
+      return "text-blue-500";
+    case "DELETE":
+      return "text-red-500";
+    case "LOGIN":
+      return "text-green-500";
+    case "LOGOUT":
+      return "text-slate-500";
+    case "BORROW":
+      return "text-amber-500";
+    case "RETURN":
+      return "text-emerald-500";
+    case "REPORT":
+      return "text-red-500";
+    default:
+      return "text-indigo-500";
+  }
+};
+
+const formatRelativeTime = (dateStr) => {
+  if (!dateStr) return "Recently";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hr ago`;
+  if (diffDays === 1) return "Yesterday";
+  return `${diffDays} days ago`;
+};
 
 const StatCard = ({ icon, label, value, sub, color }) => (
   <div className="bg-white rounded-2xl border border-slate-100 p-6 flex items-start gap-4">
@@ -65,6 +131,8 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
+      // Always fetch these – they are public or work for both roles
       const [inventoryRes, transactionsRes, peripheralsRes] = await Promise.all(
         [
           axiosInstance.get("/inventory"),
@@ -77,17 +145,18 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
       const transactions = transactionsRes.data || [];
       const peripherals = peripheralsRes.data || [];
 
-      // Total peripheral units (working + damaged)
-      const totalPeripherals = peripherals.reduce(
-        (sum, p) => sum + (p.working_count + p.damaged_count),
-        0,
-      );
-
-      const uniqueLabs = [...new Set(inventory.map((item) => item.lab_name))];
+      // Stats
+      const uniqueLabs = [
+        ...new Set(inventory.map((item) => item.lab_name).filter(Boolean)),
+      ];
       const activeBorrows = transactions.filter(
         (t) => t.transaction_status === "borrowed",
       ).length;
       const totalEquipment = inventory.length;
+      const totalPeripherals = peripherals.reduce(
+        (sum, p) => sum + (p.working_count + p.damaged_count),
+        0,
+      );
 
       setStats({
         labs: uniqueLabs.length,
@@ -102,7 +171,7 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
         return acc;
       }, {});
       const total = Object.values(equipmentStatus).reduce((a, b) => a + b, 0);
-      const statusData = [
+      setAssetStatus([
         {
           label: "Working",
           count: equipmentStatus.working || 0,
@@ -127,46 +196,34 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
           total,
           color: "bg-red-400",
         },
-      ];
-      setAssetStatus(statusData);
+      ]);
 
-      // Recent activity from transactions
-      const recent = transactions.slice(0, 5).map((t) => ({
-        icon:
-          t.transaction_status === "borrowed" ? (
-            <ClipboardList size={15} />
-          ) : (
-            <CheckCircle2 size={15} />
-          ),
-        text: `${t.borrower_name} ${t.transaction_status === "borrowed" ? "borrowed" : "returned"} ${t.item_name}`,
-        time: formatRelativeTime(t.borrow_date),
-        color:
-          t.transaction_status === "borrowed"
-            ? "text-blue-500"
-            : "text-emerald-500",
-      }));
-      setRecentActivity(recent);
+      // Only fetch activity logs if user is admin (they are protected)
+      if (userRole === "admin") {
+        try {
+          const logsRes = await axiosInstance.get("/activity-logs?limit=10");
+          const logs = logsRes.data || [];
+          const recent = logs.slice(0, 5).map((log) => ({
+            icon: getActivityIcon(log.action),
+            text: `${log.action} on ${log.table_affected} ${log.record_id ? `(ID: ${log.record_id})` : ""}`,
+            time: formatRelativeTime(log.created_at),
+            color: getActivityColor(log.action),
+          }));
+          setRecentActivity(recent);
+        } catch (err) {
+          console.warn("Could not fetch activity logs:", err);
+          setRecentActivity([]);
+        }
+      } else {
+        // For instructors, you could show their own transactions or leave empty
+        setRecentActivity([]);
+      }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast.error("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatRelativeTime = (dateStr) => {
-    if (!dateStr) return "Recently";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hr ago`;
-    if (diffDays === 1) return "Yesterday";
-    return `${diffDays} days ago`;
   };
 
   if (loading) {
@@ -229,7 +286,7 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
             <h2 className="text-base font-semibold text-slate-800">
               Recent Activity
             </h2>
-            <span className="text-xs text-slate-400">Latest transactions</span>
+            <span className="text-xs text-slate-400">Latest actions</span>
           </div>
           <ul className="divide-y divide-slate-50">
             {recentActivity.length === 0 ? (
