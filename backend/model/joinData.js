@@ -1,7 +1,6 @@
-// backend/model/joinData.js
 import pool from "../db.js";
 
-// 1. Fetch Equipment with Lab and Category details
+// Equipment with lab & category
 export const getFullInventory = async () => {
   const query = `
     SELECT 
@@ -28,7 +27,38 @@ export const getFullInventory = async () => {
   return rows;
 };
 
-// 2. Fetch Transactions - MAKE SURE instructor_id IS INCLUDED
+// Peripherals – individual items with counts (grouped for summary)
+export const getPeripheralsSummary = async () => {
+  const query = `
+    SELECT 
+      peripheral_id, equipment_id, lab_id, category_id, item_name, brand, status, updated_at,
+      c.category_name,
+      l.lab_name,
+      e.asset_tag as equipment_asset_tag
+    FROM clams.peripherals p
+    LEFT JOIN clams.categories c ON p.category_id = c.category_id
+    LEFT JOIN clams.laboratories l ON p.lab_id = l.lab_id
+    LEFT JOIN clams.equipment e ON p.equipment_id = e.equipment_id
+    WHERE p.is_deleted = false
+    ORDER BY p.peripheral_id
+  `;
+  const { rows } = await pool.query(query);
+  return rows;
+};
+
+// For dashboard counts
+export const getPeripheralCounts = async () => {
+  const result = await pool.query(`
+    SELECT 
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'working' THEN 1 END) as working,
+      COUNT(CASE WHEN status = 'damaged' THEN 1 END) as damaged
+    FROM clams.peripherals
+    WHERE is_deleted = false
+  `);
+  return result.rows[0];
+};
+
 export const getTransactionHistory = async () => {
   const query = `
     SELECT 
@@ -45,7 +75,7 @@ export const getTransactionHistory = async () => {
         t.peripheral_id,
         u.first_name || ' ' || u.last_name AS instructor_name,
         COALESCE(e.item_name, p.item_name) AS item_name,
-        COALESCE(e.asset_tag, 'PERIPHERAL') AS asset_tag
+        COALESCE(e.asset_tag, 'Peripheral') AS asset_tag
     FROM clams.borrow_transactions t
     LEFT JOIN clams.users u ON t.instructor_id = u.user_id
     LEFT JOIN clams.equipment e ON t.equipment_id = e.equipment_id
@@ -53,11 +83,9 @@ export const getTransactionHistory = async () => {
     ORDER BY t.borrow_date DESC;
   `;
   const { rows } = await pool.query(query);
-  console.log("Transactions returned:", rows.length); // Debug
   return rows;
 };
 
-// 3. Fetch Damage Reports - MAKE SURE instructor_id IS INCLUDED
 export const getDamageReports = async () => {
   const query = `
     SELECT 
@@ -82,6 +110,5 @@ export const getDamageReports = async () => {
     ORDER BY dr.created_at DESC;
   `;
   const { rows } = await pool.query(query);
-  console.log("Reports returned:", rows.length); // Debug
   return rows;
 };

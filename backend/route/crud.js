@@ -39,28 +39,94 @@ crud.get("/categories", async (req, res) => {
   }
 });
 
-// UPDATED: Peripherals endpoint with equipment join
+// backend/route/crud.js (partial – add/replace these)
+
 crud.get("/peripherals", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        p.*, 
-        c.category_name, 
-        l.lab_name,
-        l.room_number,
-        l.building,
-        e.asset_tag as equipment_asset_tag,
-        e.item_name as equipment_name
+        p.item_name,
+        p.brand,
+        c.category_name,
+        COUNT(CASE WHEN p.status = 'working' THEN 1 END)::int AS working_count,
+        COUNT(CASE WHEN p.status = 'damaged' THEN 1 END)::int AS damaged_count,
+        COUNT(*)::int AS total_count
       FROM clams.peripherals p
       LEFT JOIN clams.categories c ON p.category_id = c.category_id
-      LEFT JOIN clams.laboratories l ON p.lab_id = l.lab_id
-      LEFT JOIN clams.equipment e ON p.equipment_id = e.equipment_id
       WHERE p.is_deleted = false
+      GROUP BY p.item_name, p.brand, c.category_name
       ORDER BY p.item_name
+    `);
+    const rows = result.rows.map((row, idx) => ({
+      ...row,
+      peripheral_id: idx + 1,
+    }));
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// Bulk create – adds many individual rows (all 'working')
+crud.post("/create/peripherals/bulk", verifyToken, async (req, res) => {
+  const { item_name, brand, category_id, lab_id, copies } = req.body.data;
+  const count = parseInt(copies) || 1;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < count; i++) {
+      await client.query(
+        `
+        INSERT INTO clams.peripherals (item_name, brand, category_id, lab_id, status)
+        VALUES ($1, $2, $3, $4, 'working')
+      `,
+        [item_name, brand || null, category_id || null, lab_id || null],
+      );
+    }
+    await client.query("COMMIT");
+    // Log activity once for the batch
+    const { logActivity } = await import("../model/logsModel.js");
+    await logActivity(req.user.user_id, "CREATE", "peripherals", null);
+    res.json({ success: true, message: `Added ${count} peripheral(s)` });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: error.message });
+  } finally {
+    client.release();
+  }
+});
+// Also keep your existing endpoints (equipment-list, laboratories, etc.)
+crud.get("/equipment-list", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT equipment_id, asset_tag, item_name, lab_id
+      FROM clams.equipment
+      WHERE is_deleted = false
+      ORDER BY item_name
     `);
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching peripherals:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+crud.get("/laboratories", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM clams.laboratories ORDER BY lab_name",
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+crud.get("/categories", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM clams.categories ORDER BY category_name",
+    );
+    res.json(result.rows);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -172,7 +238,7 @@ crud.put(
       res.json({
         success: true,
         message: `${component} status updated to ${status}`,
-        equipment: result.rows[0],
+        equipmecrdnt: result.rows[0],
       });
     } catch (error) {
       console.error("Error updating spec status:", error);

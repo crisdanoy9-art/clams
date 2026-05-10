@@ -1,13 +1,11 @@
 import pool from "../db.js";
 
-// Helper to get the correct ID column name based on table name
-// backend/model/crudModel.js - Update the getPkName function
 const getPkName = (table) => {
   if (table === "users") return "user_id";
   if (table === "categories") return "category_id";
   if (table === "laboratories") return "lab_id";
   if (table === "equipment") return "equipment_id";
-  if (table === "peripherals") return "peripheral_id"; // Add this
+  if (table === "peripherals") return "peripheral_id";
   if (table === "borrow_transactions") return "transaction_id";
   if (table === "damage_reports") return "report_id";
   return "id";
@@ -38,7 +36,6 @@ export const updateData = async (data, table, id) => {
 
 export const softDelete = async (id, table) => {
   const pkName = getPkName(table);
-  // Note: Only tables with 'is_deleted' column will work here
   const query = `UPDATE clams.${table} SET is_deleted = true WHERE ${pkName} = $1 RETURNING *`;
   const result = await pool.query(query, [id]);
   return result.rows[0];

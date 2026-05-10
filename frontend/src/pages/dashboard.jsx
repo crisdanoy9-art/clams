@@ -62,24 +62,28 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
     fetchDashboardData();
   }, []);
 
-  // frontend/src/pages/dashboard.jsx - Fix the fetchDashboardData function
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-
-      // Use ONLY the endpoints that exist in your backend
-      const [inventoryRes, transactionsRes] = await Promise.all([
-        axiosInstance.get("/inventory"), // This exists ✅
-        axiosInstance.get("/transactions"), // This exists ✅
-      ]);
+      const [inventoryRes, transactionsRes, peripheralsRes] = await Promise.all(
+        [
+          axiosInstance.get("/inventory"),
+          axiosInstance.get("/transactions"),
+          axiosInstance.get("/peripherals"),
+        ],
+      );
 
       const inventory = inventoryRes.data || [];
       const transactions = transactionsRes.data || [];
+      const peripherals = peripheralsRes.data || [];
 
-      // Calculate unique labs from inventory data (instead of /laboratories endpoint)
+      // Total peripheral units (working + damaged)
+      const totalPeripherals = peripherals.reduce(
+        (sum, p) => sum + (p.working_count + p.damaged_count),
+        0,
+      );
+
       const uniqueLabs = [...new Set(inventory.map((item) => item.lab_name))];
-
-      // Calculate stats without needing separate endpoints
       const activeBorrows = transactions.filter(
         (t) => t.transaction_status === "borrowed",
       ).length;
@@ -88,16 +92,15 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
       setStats({
         labs: uniqueLabs.length,
         equipment: totalEquipment,
-        peripherals: 0, // You'll need to add a peripherals endpoint or calculate differently
+        peripherals: totalPeripherals,
         activeBorrows,
       });
 
-      // Calculate asset status from inventory
+      // Asset status from equipment
       const equipmentStatus = inventory.reduce((acc, item) => {
         acc[item.status] = (acc[item.status] || 0) + 1;
         return acc;
       }, {});
-
       const total = Object.values(equipmentStatus).reduce((a, b) => a + b, 0);
       const statusData = [
         {
@@ -127,7 +130,7 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
       ];
       setAssetStatus(statusData);
 
-      // Format recent activity from transactions
+      // Recent activity from transactions
       const recent = transactions.slice(0, 5).map((t) => ({
         icon:
           t.transaction_status === "borrowed" ? (
@@ -150,40 +153,15 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
       setLoading(false);
     }
   };
-  const getActivityIcon = (action) => {
-    switch (action?.toLowerCase()) {
-      case "return":
-        return <CheckCircle2 size={15} />;
-      case "report":
-        return <AlertTriangle size={15} />;
-      case "borrow":
-        return <ClipboardList size={15} />;
-      default:
-        return <TrendingUp size={15} />;
-    }
-  };
-
-  const getActivityColor = (action) => {
-    switch (action?.toLowerCase()) {
-      case "return":
-        return "text-emerald-500";
-      case "report":
-        return "text-amber-500";
-      case "borrow":
-        return "text-blue-500";
-      default:
-        return "text-indigo-500";
-    }
-  };
 
   const formatRelativeTime = (dateStr) => {
+    if (!dateStr) return "Recently";
     const date = new Date(dateStr);
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-
     if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hr ago`;
@@ -206,7 +184,8 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">
-          Welcome back, {currentUser?.first_name || currentUser?.username}!
+          Welcome back,{" "}
+          {currentUser?.first_name || currentUser?.username || "User"}!
         </h1>
         <p className="text-sm text-slate-500 mt-1">
           Here's an overview of the CCS laboratory assets.
@@ -250,7 +229,7 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
             <h2 className="text-base font-semibold text-slate-800">
               Recent Activity
             </h2>
-            <span className="text-xs text-slate-400">Today</span>
+            <span className="text-xs text-slate-400">Latest transactions</span>
           </div>
           <ul className="divide-y divide-slate-50">
             {recentActivity.length === 0 ? (
@@ -294,6 +273,12 @@ export default function Dashboard({ userRole, currentUser, onNavigate }) {
                 </div>
               </div>
             ))}
+          </div>
+          <div className="mt-6 pt-5 border-t border-slate-50">
+            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 rounded-xl px-4 py-3">
+              <Clock size={16} />
+              <p className="text-sm font-medium">Real‑time asset tracking</p>
+            </div>
           </div>
         </div>
       </div>

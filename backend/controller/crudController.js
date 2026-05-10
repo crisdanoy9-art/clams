@@ -1,8 +1,10 @@
-// backend/controller/crudController.js
 import { insertData, updateData, softDelete } from "../model/crudModel.js";
 import { logActivity } from "../model/logsModel.js";
 
-const prepareData = (req) => {
+// Tables that have an instructor_id column
+const INSTRUCTOR_TABLES = ["damage_reports", "borrow_transactions"];
+
+const prepareData = (req, table) => {
   let bodyData = req.body.data;
 
   if (typeof bodyData === "string") {
@@ -13,10 +15,8 @@ const prepareData = (req) => {
     bodyData = req.body;
   }
 
-  // AUTO-FILL USER ID from JWT token - FIXED
-  if (req.user && req.user.user_id) {
-    // For damage_reports and borrow_transactions, always set instructor_id from token
-    // This overrides any value sent from frontend
+  // Only add instructor_id for tables that actually have it
+  if (req.user && req.user.user_id && INSTRUCTOR_TABLES.includes(table)) {
     bodyData.instructor_id = req.user.user_id;
   }
 
@@ -29,14 +29,10 @@ const prepareData = (req) => {
   return bodyData;
 };
 
-// CREATE
 export const Post = async (req, res) => {
   try {
     const { table } = req.params;
-    const bodyData = prepareData(req);
-
-    console.log(`Creating ${table} with data:`, bodyData); // Debug log
-
+    const bodyData = prepareData(req, table);
     const result = await insertData(bodyData, table);
 
     let recordId = null;
@@ -58,12 +54,10 @@ export const Post = async (req, res) => {
   }
 };
 
-// UPDATE
 export const Update = async (req, res) => {
   try {
     const { table, id } = req.params;
-    const bodyData = prepareData(req);
-
+    const bodyData = prepareData(req, table);
     const result = await updateData(bodyData, table, id);
     if (!result) return res.status(404).json({ msg: "Record not found" });
 
@@ -79,12 +73,10 @@ export const Update = async (req, res) => {
   }
 };
 
-// SOFT DELETE
 export const Remove = async (req, res) => {
   try {
     const { table, id } = req.params;
     const result = await softDelete(id, table);
-
     if (!result) {
       return res
         .status(404)
