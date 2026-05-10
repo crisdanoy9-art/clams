@@ -9,6 +9,7 @@ import {
   Users,
   History,
   FileBarChart,
+  LogOut,
 } from "lucide-react";
 
 const NavItem = ({ icon, label, isActive, isExpanded, onClick }) => (
@@ -111,6 +112,19 @@ const Sidebar = ({
 
   const filtered = navItems.filter((item) => item.roles.includes(userRole));
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("currentView");
+    if (!localStorage.getItem("rememberMe")) {
+      localStorage.removeItem("savedEmail");
+    }
+    window.location.reload();
+  };
+
   return (
     <aside
       onMouseEnter={() => onExpandChange(true)}
@@ -119,13 +133,13 @@ const Sidebar = ({
         ${expanded ? "w-64" : "w-20"}`}
     >
       {/* Logo Area - TEXT SIZE REDUCED */}
-      <div className="h-20 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
-        <div className="w-20 h-full flex items-center justify-center shrink-0">
-          <div className="w-14 h-10 flex items-center justify-center">
+       <div className="h-28 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
+        <div className="w-24 h-full flex items-center justify-center shrink-0">
+          <div className="w-16 h-14 flex items-center justify-center">
             <img
               src="../../public/logo.png"
               alt="logo"
-              className="w-14 h-10 object-contain block animate-logo-spin"
+              className="w-16 h-14 object-contain block animate-logo-spin dark:brightness-110 dark:drop-shadow-glow"
               style={{
                 transformOrigin: "center center",
                 backfaceVisibility: "hidden",
@@ -141,11 +155,11 @@ const Sidebar = ({
               : "opacity-0 -translate-x-10 pointer-events-none"
           }`}
         >
-          <p className="text-sm font-black text-slate-900 whitespace-nowrap leading-none tracking-tighter">
+          <p className="text-2xl font-black text-slate-900 whitespace-nowrap leading-tight tracking-tighter">
             CLAMS
           </p>
-          <p className="text-[9px] text-indigo-600 whitespace-nowrap mt-1 font-semibold uppercase tracking-wider">
-            Managementss
+          <p className="text-xs text-indigo-600 whitespace-nowrap mt-2 font-semibold uppercase tracking-wider">
+            Management System
           </p>
         </div>
       </div>
@@ -163,6 +177,25 @@ const Sidebar = ({
           />
         ))}
       </nav>
+
+      {/* LOGOUT BUTTON - EMPHASIZED AT THE BOTTOM */}
+      <div className="px-2 pb-6 mt-auto">
+        <button
+          onClick={handleLogout}
+          className={`relative w-full h-12 flex items-center group outline-none rounded-lg transition-all duration-200 cursor-pointer
+            bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg
+            ${expanded ? "justify-start" : "justify-center"}`}
+        >
+          <div className="w-14 h-full flex items-center justify-center shrink-0">
+            <LogOut size={20} className="text-white" />
+          </div>
+          {expanded && (
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-white">
+              Log Out
+            </span>
+          )}
+        </button>
+      </div>
     </aside>
   );
 };

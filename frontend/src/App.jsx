@@ -6,12 +6,11 @@ import Laboratories from "./pages/laboratories";
 import Equipment from "./pages/equipment";
 import Peripherals from "./pages/peripherals";
 import Settings from "./pages/settings";
-import DamageReports from "./pages/reports"; // fixed: use damage.jsx
+import DamageReports from "./pages/reports";
 import BorrowTransactions from "./pages/borrow";
 import Login from "./pages/login";
 import ActivityLogs from "./pages/logs";
 import UserManagement from "./pages/users";
-// Optional: import Reports from "./pages/reports"; if you have a separate analytics page
 
 const App = () => {
   const [userRole, setUserRole] = useState(null);
@@ -20,7 +19,6 @@ const App = () => {
   const [currentView, setCurrentView] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for existing session on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -56,12 +54,15 @@ const App = () => {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentView");
+    localStorage.removeItem("theme");
     if (!localStorage.getItem("rememberMe")) {
       localStorage.removeItem("savedEmail");
     }
     setUserRole(null);
     setIsLoggedIn(false);
     setCurrentView("dashboard");
+    // Remove dark mode class if exists
+    document.documentElement.classList.remove("dark");
   };
 
   const renderView = () => {
@@ -77,7 +78,7 @@ const App = () => {
       case "borrow":
         return <BorrowTransactions userRole={userRole} />;
       case "users":
-        return <UserManagement />;
+        return <UserManagement userRole={userRole} />;
       case "reports":
         return <DamageReports userRole={userRole} />;
       case "logs":
@@ -102,7 +103,6 @@ const App = () => {
     }
   };
 
-  // Show loading state
   if (isLoading) {
     return (
       <div className="flex h-screen bg-slate-50 items-center justify-center">
@@ -114,25 +114,19 @@ const App = () => {
     );
   }
 
-  // Show login page if not logged in
   if (!isLoggedIn) {
     return <Login onLogin={handleLogin} />;
   }
 
-  // Show main app if logged in
-  const showSidebar = currentView !== "settings";
-
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-      {showSidebar && (
-        <Sidebar
-          onSelect={handleSetView}
-          activeView={currentView}
-          userRole={userRole}
-          expanded={sidebarExpanded}
-          onExpandChange={setSidebarExpanded}
-        />
-      )}
+      <Sidebar
+        onSelect={handleSetView}
+        activeView={currentView}
+        userRole={userRole}
+        expanded={sidebarExpanded}
+        onExpandChange={setSidebarExpanded}
+      />
 
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar
