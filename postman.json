@@ -1,0 +1,106 @@
+--- CREATE METHODS (POST) ---
+START HERE IF YOU DID NOT RUN THE SEED SCRIPT
+(Creates Parents first)
+1. POST http://localhost:3000/api/create/categories
+{
+"data": {
+"category_name": "Computing Devices"
+}
+}
+
+2. POST http://localhost:3000/api/create/laboratories
+{
+"data": {
+"lab_name": "Advanced Software Lab",
+"room_number": "404",
+"building": "Tech Tower",
+"total_stations": 30
+}
+}
+
+START HERE IF YOU DID RUN THE SEED SCRIPT
+(Uses existing IDs)
+3. POST http://localhost:3000/api/create/equipment
+{
+  "data": {
+    "asset_tag": "EQP-2026-002",
+    "item_name": "Gaming PC",
+    "category_id": 1,
+    "brand": "Dell",
+    "model": "XPS 8950",
+    "serial_number": "SN-DELL-001",
+    "specs": {
+      "cpu": "Intel i7-12700",
+      "cpu_status": "good",
+      "ram": "32GB DDR5",
+      "ram_status": "bad",
+      "storage": "1TB NVMe SSD",
+      "storage_status": "good",
+      "gpu": "RTX 3060",
+      "gpu_status": "good"
+    },
+    "lab_id": 1,
+    "status": "working",
+    "purchase_date": "2026-05-09"
+  }
+}
+
+4. POST http://localhost:3000/api/create/peripherals
+{
+"data": {
+"item_name": "Logitech MX Master 3S",
+"category_id": 1,
+"brand": "Logitech",
+"lab_id": 1,
+"working_count": 20,
+"damaged_count": 0
+}
+}
+
+5. POST http://localhost:3000/api/create/borrow_transactions
+(instructor_id is auto-filled by JWT, but you can include it if you want)
+{
+"data": {
+"borrower_name": "John Doe",
+"equipment_id": 1,
+"peripheral_id": null,
+"quantity": 1,
+"status": "borrowed",
+"borrow_date": "2026-05-08",
+"expected_return_date": "2026-05-15"
+}
+}
+
+6. POST http://localhost:3000/api/create/damage_reports
+{
+"data": {
+"equipment_id": 1,
+"subject": "Hardware Failure",
+"description": "Screen flickering and overheating",
+"status": "pending"
+}
+}
+
+--- UPDATE METHODS (PUT) ---
+7. PUT http://localhost:3000/api/update/equipment/1
+{
+"data": {
+"status": "for_repair",
+"item_name": "Updated MacBook Name"
+}
+}
+
+8. PUT http://localhost:3000/api/update/peripherals/1
+{
+"data": {
+"working_count": 15,
+"damaged_count": 5
+}
+}
+
+--- REMOVE & RETRIEVAL METHODS (GET/DELETE) ---
+9. GET http://localhost:3000/api/inventory
+10. GET http://localhost:3000/api/transactions
+11. GET http://localhost:3000/api/reports
+12. DELETE http://localhost:3000/api/remove/equipment/1
+13. DELETE http://localhost:3000/api/remove/peripherals/1
