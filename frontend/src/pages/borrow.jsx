@@ -58,6 +58,8 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     expected_return_date: "",
     remarks: "",
   });
+  const [maxAvailable, setMaxAvailable] = useState(0);
+  const [quantityError, setQuantityError] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -94,7 +96,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
     return currentUser?.user_id;
   };
 
-  // FILTER BY INSTRUCTOR ID - THIS IS THE KEY FIX
+  // FILTER BY INSTRUCTOR ID
   let filteredTransactions = transactions;
   if (userRole === "instructor") {
     const userId = getCurrentUserId();
@@ -178,6 +180,10 @@ export default function BorrowTransactions({ userRole, currentUser }) {
       toast.error("Please fill in all required fields");
       return;
     }
+    if (quantityError) {
+      toast.error(quantityError);
+      return;
+    }
 
     try {
       const borrowData = {
@@ -206,6 +212,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         expected_return_date: "",
         remarks: "",
       });
+      setQuantityError("");
       fetchData();
     } catch (error) {
       console.error("Error submitting borrow:", error);
@@ -224,6 +231,43 @@ export default function BorrowTransactions({ userRole, currentUser }) {
 
   const getAvailablePeripherals = () => {
     return peripherals.filter((p) => p.working_count > 0);
+  };
+
+  const handleItemChange = (itemId) => {
+    setNewBorrow({ ...newBorrow, item_id: itemId, quantity: 1 });
+    setQuantityError("");
+    if (newBorrow.item_type === "peripheral" && itemId) {
+      const selected = peripherals.find(
+        (p) => p.peripheral_id === parseInt(itemId),
+      );
+      if (selected) {
+        setMaxAvailable(selected.working_count);
+      } else {
+        setMaxAvailable(0);
+      }
+    } else {
+      setMaxAvailable(1);
+    }
+  };
+
+  const handleQuantityChange = (value) => {
+    const qty = parseInt(value) || 0;
+    setNewBorrow({ ...newBorrow, quantity: qty });
+    if (newBorrow.item_type === "peripheral") {
+      if (qty > maxAvailable) {
+        setQuantityError(`Only ${maxAvailable} unit(s) available`);
+      } else if (qty < 1) {
+        setQuantityError("Quantity must be at least 1");
+      } else {
+        setQuantityError("");
+      }
+    } else {
+      if (qty !== 1) {
+        setQuantityError("Equipment can only be borrowed one at a time");
+      } else {
+        setQuantityError("");
+      }
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -252,7 +296,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
+      {/* Header - unchanged */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -300,7 +344,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - unchanged */}
       {userRole === "admin" ? (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center gap-4">
@@ -391,7 +435,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         </div>
       )}
 
-      {/* Instructor View Tabs */}
+      {/* Instructor View Tabs - unchanged */}
       {userRole === "instructor" && (
         <div className="flex gap-2 border-b border-slate-100">
           <button
@@ -423,7 +467,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table - unchanged */}
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -563,7 +607,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         </div>
       </div>
 
-      {/* View Transaction Modal */}
+      {/* View Transaction Modal - unchanged */}
       {isViewModalOpen && selectedTransaction && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -583,7 +627,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 <XCircle size={20} className="text-slate-400" />
               </button>
             </div>
-
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -603,7 +646,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -627,7 +669,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -648,7 +689,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               </div>
-
               {selectedTransaction.actual_return_date && (
                 <div>
                   <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -661,7 +701,6 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                   </p>
                 </div>
               )}
-
               <div>
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   Remarks
@@ -675,7 +714,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
         </div>
       )}
 
-      {/* New Borrow Modal */}
+      {/* New Borrow Modal - only validation logic added, no UI changes */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -697,13 +736,15 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                       type="radio"
                       value="equipment"
                       checked={newBorrow.item_type === "equipment"}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setNewBorrow({
                           ...newBorrow,
                           item_type: e.target.value,
                           item_id: "",
-                        })
-                      }
+                          quantity: 1,
+                        });
+                        setQuantityError("");
+                      }}
                       className="w-4 h-4 text-slate-900"
                     />
                     <span className="text-sm text-slate-700">Equipment</span>
@@ -713,13 +754,15 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                       type="radio"
                       value="peripheral"
                       checked={newBorrow.item_type === "peripheral"}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setNewBorrow({
                           ...newBorrow,
                           item_type: e.target.value,
                           item_id: "",
-                        })
-                      }
+                          quantity: 1,
+                        });
+                        setQuantityError("");
+                      }}
                       className="w-4 h-4 text-slate-900"
                     />
                     <span className="text-sm text-slate-700">Peripheral</span>
@@ -737,9 +780,7 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 </label>
                 <select
                   value={newBorrow.item_id}
-                  onChange={(e) =>
-                    setNewBorrow({ ...newBorrow, item_id: e.target.value })
-                  }
+                  onChange={(e) => handleItemChange(e.target.value)}
                   className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
                 >
                   <option value="">Select an item</option>
@@ -765,18 +806,28 @@ export default function BorrowTransactions({ userRole, currentUser }) {
                 <input
                   type="number"
                   min="1"
-                  max={newBorrow.item_type === "equipment" ? 1 : 10}
+                  max={newBorrow.item_type === "equipment" ? 1 : maxAvailable}
                   value={newBorrow.quantity}
-                  onChange={(e) =>
-                    setNewBorrow({ ...newBorrow, quantity: e.target.value })
-                  }
-                  className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                  className={`w-full px-3 py-2 text-sm bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition ${
+                    quantityError ? "border-red-500" : "border-slate-200"
+                  }`}
                 />
+                {quantityError && (
+                  <p className="text-xs text-red-500 mt-1">{quantityError}</p>
+                )}
                 {newBorrow.item_type === "equipment" && (
                   <p className="text-xs text-slate-400 mt-1">
                     Equipment can only be borrowed one at a time
                   </p>
                 )}
+                {newBorrow.item_type === "peripheral" &&
+                  maxAvailable > 0 &&
+                  !quantityError && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Available: {maxAvailable} units
+                    </p>
+                  )}
               </div>
 
               <div>
@@ -824,7 +875,12 @@ export default function BorrowTransactions({ userRole, currentUser }) {
               </button>
               <button
                 onClick={handleSubmitBorrow}
-                className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition"
+                disabled={
+                  !!quantityError ||
+                  !newBorrow.item_id ||
+                  !newBorrow.expected_return_date
+                }
+                className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Submit Borrow Request
               </button>
