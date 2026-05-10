@@ -1,4 +1,3 @@
-// frontend/src/components/sideBar.jsx
 import React from "react";
 import {
   LayoutDashboard,
@@ -16,21 +15,19 @@ import {
 const NavItem = ({ icon, label, isActive, isExpanded, onClick }) => (
   <button
     onClick={onClick}
-    className={`relative w-full h-12 flex items-center group outline-none rounded-lg overflow-hidden
+    className={`relative w-full h-12 flex items-center group outline-none rounded-lg overflow-hidden transition-all duration-200
       ${
         isActive
-          ? "bg-slate-900 text-white"
-          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+          ? "bg-slate-900 text-white dark:bg-indigo-600 dark:text-white"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
       }`}
   >
     {isActive && (
-      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full z-30" />
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full z-30 dark:bg-indigo-400" />
     )}
-
     <div className="w-14 h-full flex items-center justify-center shrink-0 z-20">
       {icon}
     </div>
-
     <span
       className={`text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-in-out
         ${
@@ -51,71 +48,19 @@ const Sidebar = ({
   expanded,
   onExpandChange,
 }) => {
-  console.log("Sidebar rendering with userRole:", userRole); // Debug log
-
   const navItems = [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: <LayoutDashboard size={20} />,
-      roles: ["admin", "instructor"],
-    },
-    {
-      id: "laboratories",
-      label: "Laboratories",
-      icon: <FlaskConical size={20} />,
-      roles: ["admin", "instructor"],
-    },
-    {
-      id: "equipment",
-      label: "Equipment",
-      icon: <Monitor size={20} />,
-      roles: ["admin", "instructor"],
-    },
-    {
-      id: "peripherals",
-      label: "Peripherals",
-      icon: <MousePointer2 size={20} />,
-      roles: ["admin", "instructor"],
-    },
-    {
-      id: "borrow",
-      label: "Borrow & Return",
-      icon: <ClipboardList size={20} />,
-      roles: ["admin", "instructor"],
-    },
-    {
-      id: "reports",
-      label: "Damage Reports",
-      icon: <AlertTriangle size={20} />,
-      roles: ["admin", "instructor"], // Both can see damage reports
-    },
-    {
-      id: "users",
-      label: "User Management",
-      icon: <Users size={20} />,
-      roles: ["admin"], // Only admin
-    },
-    {
-      id: "logs",
-      label: "Activity Logs",
-      icon: <History size={20} />,
-      roles: ["admin"], // Only admin
-    },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, roles: ["admin", "instructor"] },
+    { id: "laboratories", label: "Laboratories", icon: <FlaskConical size={20} />, roles: ["admin", "instructor"] },
+    { id: "equipment", label: "Equipment", icon: <Monitor size={20} />, roles: ["admin", "instructor"] },
+    { id: "peripherals", label: "Peripherals", icon: <MousePointer2 size={20} />, roles: ["admin", "instructor"] },
+    { id: "borrow", label: "Borrow & Return", icon: <ClipboardList size={20} />, roles: ["admin", "instructor"] },
+    { id: "damage", label: "Damage Reports", icon: <AlertTriangle size={20} />, roles: ["instructor"] },
+    { id: "users", label: "User Management", icon: <Users size={20} />, roles: ["admin"] },
+    { id: "reports", label: "Reports", icon: <FileBarChart size={20} />, roles: ["admin"] },
+    { id: "logs", label: "Activity Logs", icon: <History size={20} />, roles: ["admin"] },
   ];
 
-  // Filter nav items based on user role
-  const filtered = userRole
-    ? navItems.filter((item) => item.roles.includes(userRole))
-    : [];
-
-  console.log("Filtered nav items:", filtered.length); // Debug log
-
-  // If no userRole or no items, show nothing
-  if (!userRole || filtered.length === 0) {
-    console.log("No sidebar items to show");
-    return null;
-  }
+  const filtered = navItems.filter((item) => item.roles.includes(userRole));
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -124,9 +69,11 @@ const Sidebar = ({
     localStorage.removeItem("userEmail");
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("currentView");
+    localStorage.removeItem("theme");
     if (!localStorage.getItem("rememberMe")) {
       localStorage.removeItem("savedEmail");
     }
+    document.documentElement.classList.remove("dark");
     window.location.reload();
   };
 
@@ -135,32 +82,23 @@ const Sidebar = ({
       onMouseEnter={() => onExpandChange(true)}
       onMouseLeave={() => onExpandChange(false)}
       className={`h-screen bg-white border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20
+        dark:bg-slate-900 dark:border-slate-700
         ${expanded ? "w-64" : "w-20"}`}
     >
-<<<<<<< HEAD
-      {/* Logo Area - TEXT SIZE REDUCED */}
-       <div className="h-28 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
+      <div className="h-28 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden dark:border-slate-700">
         <div className="w-24 h-full flex items-center justify-center shrink-0">
           <div className="w-16 h-14 flex items-center justify-center">
-=======
-      {/* Logo Area */}
-      <div className="h-20 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
-        <div className="w-20 h-full flex items-center justify-center shrink-0">
-          <div className="w-14 h-10 flex items-center justify-center">
->>>>>>> origin/main
             <img
               src="/logo.png"
               alt="logo"
-<<<<<<< HEAD
               className="w-16 h-14 object-contain block animate-logo-spin dark:brightness-110 dark:drop-shadow-glow"
               style={{
                 transformOrigin: "center center",
                 backfaceVisibility: "hidden",
-=======
-              className="w-14 h-10 object-contain block animate-logo-spin"
+                animation: "logo-rotate 20s linear infinite",
+              }}
               onError={(e) => {
-                e.target.src = "https://via.placeholder.com/56x40?text=CLAMS";
->>>>>>> origin/main
+                e.target.src = "https://via.placeholder.com/64x56?text=CLAMS";
               }}
             />
           </div>
@@ -173,21 +111,15 @@ const Sidebar = ({
               : "opacity-0 -translate-x-10 pointer-events-none"
           }`}
         >
-          <p className="text-2xl font-black text-slate-900 whitespace-nowrap leading-tight tracking-tighter">
+          <p className="text-2xl font-black text-slate-900 whitespace-nowrap leading-tight tracking-tighter dark:text-white">
             CLAMS
           </p>
-<<<<<<< HEAD
-          <p className="text-xs text-indigo-600 whitespace-nowrap mt-2 font-semibold uppercase tracking-wider">
+          <p className="text-xs text-indigo-600 whitespace-nowrap mt-2 font-semibold uppercase tracking-wider dark:text-indigo-400">
             Management System
-=======
-          <p className="text-[9px] text-indigo-600 whitespace-nowrap mt-1 font-semibold uppercase tracking-wider">
-            Management
->>>>>>> origin/main
           </p>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 py-6 px-2 flex flex-col gap-2 overflow-y-auto overflow-x-hidden scrollbar-hide">
         {filtered.map((item) => (
           <NavItem
@@ -201,12 +133,12 @@ const Sidebar = ({
         ))}
       </nav>
 
-      {/* LOGOUT BUTTON - EMPHASIZED AT THE BOTTOM */}
       <div className="px-2 pb-6 mt-auto">
         <button
           onClick={handleLogout}
           className={`relative w-full h-12 flex items-center group outline-none rounded-lg transition-all duration-200 cursor-pointer
-            bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg
+            bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg active:scale-[0.98]
+            dark:from-red-600 dark:to-red-700 dark:hover:from-red-700 dark:hover:to-red-800
             ${expanded ? "justify-start" : "justify-center"}`}
         >
           <div className="w-14 h-full flex items-center justify-center shrink-0">

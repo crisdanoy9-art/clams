@@ -97,12 +97,12 @@ export default function AboutModal({ isOpen, onClose }) {
                 <div className="flex items-start gap-4">
                   <div 
                     className="w-20 h-20 rounded-2xl overflow-hidden shadow-md shrink-0 cursor-pointer group relative bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center"
-                    onClick={() => handleImageClick("/creators/system-icon.jpg", "System Information")}
+                    onClick={() => handleImageClick("/creators/lo .png", "System Information")}
                   >
                     {!imageErrors['system'] ? (
                       <>
                         <img
-                          src="/creators/.jpg"
+                          src="/creators/lo.png"
                           alt="System"
                           className="w-full h-full object-cover"
                           onError={() => handleImageError('system')}
