@@ -22,18 +22,27 @@ START HERE IF YOU DID RUN THE SEED SCRIPT
 (Uses existing IDs)
 3. POST http://localhost:3000/api/create/equipment
 {
-"data": {
-"asset_tag": "EQP-2026-001",
-"item_name": "MacBook Air M2",
-"category_id": 1,
-"brand": "Apple",
-"model": "M2 8-Core",
-"serial_number": "FVFG99999",
-"specs": {"cpu": "M2", "ram": "16GB"},
-"lab_id": 1,
-"status": "working",
-"purchase_date": "2026-05-08"
-}
+  "data": {
+    "asset_tag": "EQP-2026-002",
+    "item_name": "Gaming PC",
+    "category_id": 1,
+    "brand": "Dell",
+    "model": "XPS 8950",
+    "serial_number": "SN-DELL-001",
+    "specs": {
+      "cpu": "Intel i7-12700",
+      "cpu_status": "good",
+      "ram": "32GB DDR5",
+      "ram_status": "bad",
+      "storage": "1TB NVMe SSD",
+      "storage_status": "good",
+      "gpu": "RTX 3060",
+      "gpu_status": "good"
+    },
+    "lab_id": 1,
+    "status": "working",
+    "purchase_date": "2026-05-09"
+  }
 }
 
 4. POST http://localhost:3000/api/create/peripherals

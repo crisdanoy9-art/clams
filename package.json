@@ -2,8 +2,7 @@
   "name": "fullstack",
   "version": "1.0.0",
   "scripts": {
-    "seed": "node backend/seed.js",
-    "installa:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\""
   },
   "devDependencies": {

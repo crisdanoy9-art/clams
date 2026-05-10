@@ -3,16 +3,20 @@
 /* ===== LOGO ANIMATION ===== */
 @keyframes logo-rotate {
   from {
-    transform: rotate(0deg);
+    transform: translateZ(0) rotate(0deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: translateZ(0) rotate(360deg);
   }
 }
 
 .animate-logo-spin {
+<<<<<<< HEAD
   animation: logo-rotate 20s linear infinite !important;
   transform: translateZ(0);
+=======
+  animation: logo-rotate 20s linear infinite;
+>>>>>>> origin/main
   will-change: transform;
 }
 

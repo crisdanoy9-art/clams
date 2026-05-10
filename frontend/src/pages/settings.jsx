@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// frontend/src/pages/settings.jsx
+import React, { useState, useEffect } from "react";
 import {
   User,
   Shield,
@@ -33,213 +34,195 @@ import {
   Smartphone,
   Settings as SettingsIcon,
 } from "lucide-react";
+import axiosInstance from "../lib/axios";
+import toast from "react-hot-toast";
 
-// Mock data for settings
-const MOCK_USER_PROFILE = {
-  name: "John Doe",
-  email: "john.doe@university.edu",
-  role: "Lab Administrator",
-  department: "Computer Science",
-  phone: "+1 (555) 123-4567",
-  office: "CCS Building, Room 301",
-  avatar: null,
-};
-
-const MOCK_LAB_SETTINGS = {
-  labName: "CCS Computer Lab 1",
-  labCode: "CCS-LAB-01",
-  timezone: "America/New_York",
-  dateFormat: "YYYY-MM-DD",
-  currency: "USD",
-  language: "en",
-  maintenanceMode: false,
-  autoBackup: true,
-  backupFrequency: "daily",
-};
-
-const MOCK_NOTIFICATION_SETTINGS = {
-  emailNotifications: true,
-  lowStockAlerts: true,
-  maintenanceAlerts: true,
-  systemUpdates: false,
-  dailyDigest: true,
-  reportReady: true,
-};
-
-const MOCK_BRANDING_SETTINGS = {
-  primaryColor: "#0F172A",
-  accentColor: "#3B82F6",
-  logoUrl: "",
-  faviconUrl: "",
-  systemName: "Lab Inventory Manager",
-};
-
-const MOCK_INTEGRATION_SETTINGS = {
-  googleCalendar: false,
-  slackWebhook: "",
-  printerAPI: false,
-  emailServer: {
-    host: "smtp.university.edu",
-    port: "587",
-    secure: false,
-  },
-};
-
-export default function Settings({ userRole }) {
-  const [activeTab, setActiveTab] = useState("general");
-  const [profile, setProfile] = useState(MOCK_USER_PROFILE);
-  const [labSettings, setLabSettings] = useState(MOCK_LAB_SETTINGS);
-  const [notifications, setNotifications] = useState(
-    MOCK_NOTIFICATION_SETTINGS,
-  );
-  const [branding, setBranding] = useState(MOCK_BRANDING_SETTINGS);
-  const [integrations, setIntegrations] = useState(MOCK_INTEGRATION_SETTINGS);
-  const [showPassword, setShowPassword] = useState(false);
+export default function Settings({ userRole, currentUser }) {
+  const [activeTab, setActiveTab] = useState("profile");
+  const [profile, setProfile] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    username: "",
+    id_number: "",
+    role: "",
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState("");
 
-  // Tabs configuration - FIXED: using SettingsIcon instead of Settings
+  // Mock settings (lab, notifications, appearance – keep as is for now)
+  const [labSettings, setLabSettings] = useState({
+    labName: "CCS Computer Lab 1",
+    labCode: "CCS-LAB-01",
+    timezone: "America/New_York",
+    dateFormat: "YYYY-MM-DD",
+    currency: "USD",
+    language: "en",
+    maintenanceMode: false,
+    autoBackup: true,
+    backupFrequency: "daily",
+  });
+
+  const [notifications, setNotifications] = useState({
+    emailNotifications: true,
+    lowStockAlerts: true,
+    maintenanceAlerts: true,
+    systemUpdates: false,
+    dailyDigest: true,
+    reportReady: true,
+  });
+
+  const [branding, setBranding] = useState({
+    primaryColor: "#0F172A",
+    accentColor: "#3B82F6",
+    logoUrl: "",
+    faviconUrl: "",
+    systemName: "Lab Inventory Manager",
+  });
+
+  const [integrations, setIntegrations] = useState({
+    googleCalendar: false,
+    slackWebhook: "",
+    printerAPI: false,
+    emailServer: {
+      host: "smtp.university.edu",
+      port: "587",
+      secure: false,
+    },
+  });
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      // Use currentUser prop if available, else fetch from API
+      if (currentUser && currentUser.user_id) {
+        setProfile({
+          first_name: currentUser.first_name || "",
+          last_name: currentUser.last_name || "",
+          email: currentUser.email || "",
+          username: currentUser.username || "",
+          id_number: currentUser.id_number || "",
+          role: currentUser.role || "",
+        });
+        setLoading(false);
+        return;
+      }
+      const response = await axiosInstance.get("/auth/me");
+      const user = response.data;
+      setProfile({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        email: user.email || "",
+        username: user.username || "",
+        id_number: user.id_number || "",
+        role: user.role || "",
+      });
+    } catch (error) {
+      console.error("Failed to load profile", error);
+      toast.error("Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileChange = (field, value) => {
+    setProfile((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const userId =
+        currentUser?.user_id ||
+        JSON.parse(localStorage.getItem("userData"))?.user_id;
+      await axiosInstance.put(`/update/users/${userId}`, {
+        data: {
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          email: profile.email,
+        },
+      });
+      // Update localStorage and currentUser if needed
+      const storedUser = JSON.parse(localStorage.getItem("userData") || "{}");
+      const updatedUser = {
+        ...storedUser,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        email: profile.email,
+      };
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+      if (currentUser) {
+        currentUser.first_name = profile.first_name;
+        currentUser.last_name = profile.last_name;
+        currentUser.email = profile.email;
+      }
+      toast.success("Profile updated successfully");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+    if (passwordData.newPassword.length < 4) {
+      setPasswordError("Password must be at least 4 characters");
+      return;
+    }
+    setPasswordError("");
+    try {
+      await axiosInstance.post("/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      toast.success("Password changed successfully");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to change password");
+    }
+  };
+
   const tabs = [
-    { id: "general", label: "General", icon: <SettingsIcon size={18} /> },
     { id: "profile", label: "Profile", icon: <User size={18} /> },
-    { id: "notifications", label: "Notifications", icon: <Bell size={18} /> },
     { id: "security", label: "Security", icon: <Shield size={18} /> },
-    { id: "integration", label: "Integrations", icon: <Globe size={18} /> },
-    { id: "backup", label: "Backup & Data", icon: <Database size={18} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={18} /> },
     { id: "appearance", label: "Appearance", icon: <Palette size={18} /> },
   ];
 
-  const handleSave = () => {
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
-  };
-
   const handleReset = () => {
-    setProfile(MOCK_USER_PROFILE);
-    setLabSettings(MOCK_LAB_SETTINGS);
-    setNotifications(MOCK_NOTIFICATION_SETTINGS);
-    setBranding(MOCK_BRANDING_SETTINGS);
-    setIntegrations(MOCK_INTEGRATION_SETTINGS);
+    fetchUserProfile(); // reload from server
+    toast.success("Profile reset to saved values");
   };
 
-  // General Settings Tab
-  const GeneralSettings = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">
-          Laboratory Information
-        </h3>
-        <p className="text-sm text-slate-500 mb-4">
-          Manage your lab's basic settings and preferences
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Lab Name
-            </label>
-            <input
-              type="text"
-              value={labSettings.labName}
-              onChange={(e) =>
-                setLabSettings({ ...labSettings, labName: e.target.value })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Lab Code
-            </label>
-            <input
-              type="text"
-              value={labSettings.labCode}
-              onChange={(e) =>
-                setLabSettings({ ...labSettings, labCode: e.target.value })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Timezone
-            </label>
-            <select
-              value={labSettings.timezone}
-              onChange={(e) =>
-                setLabSettings({ ...labSettings, timezone: e.target.value })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            >
-              <option value="America/New_York">Eastern Time (ET)</option>
-              <option value="America/Chicago">Central Time (CT)</option>
-              <option value="America/Denver">Mountain Time (MT)</option>
-              <option value="America/Los_Angeles">Pacific Time (PT)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              Date Format
-            </label>
-            <select
-              value={labSettings.dateFormat}
-              onChange={(e) =>
-                setLabSettings({ ...labSettings, dateFormat: e.target.value })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            >
-              <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-              <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-              <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-slate-100 pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-1">
-              Maintenance Mode
-            </h3>
-            <p className="text-sm text-slate-500">
-              Prevent users from accessing the system during maintenance
-            </p>
-          </div>
-          <button
-            onClick={() =>
-              setLabSettings({
-                ...labSettings,
-                maintenanceMode: !labSettings.maintenanceMode,
-              })
-            }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              labSettings.maintenanceMode ? "bg-slate-900" : "bg-slate-200"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                labSettings.maintenanceMode ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Profile Settings Tab
+  // Profile Settings Tab (dynamic)
   const ProfileSettings = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-6">
         <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center">
-          {profile.avatar ? (
-            <img
-              src={profile.avatar}
-              alt="Avatar"
-              className="w-full h-full rounded-full object-cover"
-            />
-          ) : (
-            <User size={32} className="text-slate-400" />
-          )}
+          <User size={32} className="text-slate-400" />
         </div>
         <div>
           <button className="text-sm font-medium text-slate-900 border border-slate-200 rounded-lg px-4 py-2 hover:bg-slate-50 transition">
@@ -254,13 +237,24 @@ export default function Settings({ userRole }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Full Name
+            First Name
           </label>
           <input
             type="text"
-            value={profile.name}
-            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+            value={profile.first_name}
+            onChange={(e) => handleProfileChange("first_name", e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+            Last Name
+          </label>
+          <input
+            type="text"
+            value={profile.last_name}
+            onChange={(e) => handleProfileChange("last_name", e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
           />
         </div>
         <div>
@@ -270,8 +264,30 @@ export default function Settings({ userRole }) {
           <input
             type="email"
             value={profile.email}
-            onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+            onChange={(e) => handleProfileChange("email", e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+            Username
+          </label>
+          <input
+            type="text"
+            value={profile.username}
+            disabled
+            className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">
+            ID Number
+          </label>
+          <input
+            type="text"
+            value={profile.id_number}
+            disabled
+            className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
           />
         </div>
         <div>
@@ -280,152 +296,31 @@ export default function Settings({ userRole }) {
           </label>
           <input
             type="text"
-            value={profile.role}
-            onChange={(e) => setProfile({ ...profile, role: e.target.value })}
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Department
-          </label>
-          <input
-            type="text"
-            value={profile.department}
-            onChange={(e) =>
-              setProfile({ ...profile, department: e.target.value })
-            }
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            value={profile.phone}
-            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Office Location
-          </label>
-          <input
-            type="text"
-            value={profile.office}
-            onChange={(e) => setProfile({ ...profile, office: e.target.value })}
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+            value={profile.role === "admin" ? "Administrator" : "Instructor"}
+            disabled
+            className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-500"
           />
         </div>
       </div>
-    </div>
-  );
 
-  // Notification Settings Tab
-  const NotificationSettings = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div>
-          <p className="font-medium text-slate-900">Email Notifications</p>
-          <p className="text-xs text-slate-500">
-            Receive system notifications via email
-          </p>
-        </div>
+      <div className="flex justify-end pt-4">
         <button
-          onClick={() =>
-            setNotifications({
-              ...notifications,
-              emailNotifications: !notifications.emailNotifications,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            notifications.emailNotifications ? "bg-slate-900" : "bg-slate-200"
-          }`}
+          onClick={handleSaveProfile}
+          disabled={saving}
+          className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 rounded-xl hover:bg-slate-700 transition flex items-center gap-2"
         >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.emailNotifications ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div>
-          <p className="font-medium text-slate-900">Low Stock Alerts</p>
-          <p className="text-xs text-slate-500">
-            Get notified when inventory is running low
-          </p>
-        </div>
-        <button
-          onClick={() =>
-            setNotifications({
-              ...notifications,
-              lowStockAlerts: !notifications.lowStockAlerts,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            notifications.lowStockAlerts ? "bg-slate-900" : "bg-slate-200"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.lowStockAlerts ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div>
-          <p className="font-medium text-slate-900">Maintenance Alerts</p>
-          <p className="text-xs text-slate-500">
-            Equipment maintenance reminders and updates
-          </p>
-        </div>
-        <button
-          onClick={() =>
-            setNotifications({
-              ...notifications,
-              maintenanceAlerts: !notifications.maintenanceAlerts,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            notifications.maintenanceAlerts ? "bg-slate-900" : "bg-slate-200"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.maintenanceAlerts ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div>
-          <p className="font-medium text-slate-900">Daily Digest</p>
-          <p className="text-xs text-slate-500">
-            Receive a summary of daily activities
-          </p>
-        </div>
-        <button
-          onClick={() =>
-            setNotifications({
-              ...notifications,
-              dailyDigest: !notifications.dailyDigest,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            notifications.dailyDigest ? "bg-slate-900" : "bg-slate-200"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.dailyDigest ? "translate-x-6" : "translate-x-1"}`}
-          />
+          {saving ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Save size={16} />
+          )}
+          Save Profile
         </button>
       </div>
     </div>
   );
 
-  // Security Settings Tab
+  // Security Settings Tab (Password change)
   const SecuritySettings = () => (
     <div className="space-y-6">
       <div>
@@ -443,7 +338,14 @@ export default function Settings({ userRole }) {
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition pr-10"
+                value={passwordData.currentPassword}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    currentPassword: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 pr-10"
                 placeholder="Enter current password"
               />
               <button
@@ -460,7 +362,14 @@ export default function Settings({ userRole }) {
             </label>
             <input
               type="password"
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+              value={passwordData.newPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  newPassword: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
               placeholder="Enter new password"
             />
           </div>
@@ -470,10 +379,28 @@ export default function Settings({ userRole }) {
             </label>
             <input
               type="password"
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+              value={passwordData.confirmPassword}
+              onChange={(e) =>
+                setPasswordData({
+                  ...passwordData,
+                  confirmPassword: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900"
               placeholder="Confirm new password"
             />
+            {passwordError && (
+              <p className="text-xs text-red-500 mt-1">{passwordError}</p>
+            )}
           </div>
+        </div>
+        <div className="mt-6">
+          <button
+            onClick={handleChangePassword}
+            className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 rounded-xl hover:bg-slate-700 transition"
+          >
+            Update Password
+          </button>
         </div>
       </div>
 
@@ -487,261 +414,105 @@ export default function Settings({ userRole }) {
               Add an extra layer of security to your account
             </p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition">
+          <button className="px-4 py-2 text-sm font-medium bg-slate-900 text-white rounded-xl hover:bg-slate-700">
             Enable 2FA
           </button>
         </div>
       </div>
-
-      <div className="border-t border-slate-100 pt-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-1">
-              Session Management
-            </h3>
-            <p className="text-sm text-slate-500">
-              View and manage active sessions
-            </p>
-          </div>
-          <button className="text-sm text-red-600 hover:text-red-700 font-medium">
-            Log out all devices
-          </button>
-        </div>
-        <div className="mt-4 p-4 bg-slate-50 rounded-xl">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone size={16} className="text-slate-400" />
-              <div>
-                <p className="text-sm font-medium text-slate-900">
-                  Chrome on Windows
-                </p>
-                <p className="text-xs text-slate-400">
-                  New York, USA • Last active 2 minutes ago
-                </p>
-              </div>
-            </div>
-            <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-              Current
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 
-  // Integration Settings Tab
-  const IntegrationSettings = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Globe size={18} className="text-blue-600" />
-          </div>
-          <div>
-            <p className="font-medium text-slate-900">
-              Google Calendar Integration
-            </p>
-            <p className="text-xs text-slate-500">
-              Sync maintenance schedules with Google Calendar
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() =>
-            setIntegrations({
-              ...integrations,
-              googleCalendar: !integrations.googleCalendar,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            integrations.googleCalendar ? "bg-slate-900" : "bg-slate-200"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${integrations.googleCalendar ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-b border-slate-100">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-            <Printer size={18} className="text-purple-600" />
-          </div>
-          <div>
-            <p className="font-medium text-slate-900">
-              Print Server Integration
-            </p>
-            <p className="text-xs text-slate-500">
-              Connect to your lab's print server
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={() =>
-            setIntegrations({
-              ...integrations,
-              printerAPI: !integrations.printerAPI,
-            })
-          }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            integrations.printerAPI ? "bg-slate-900" : "bg-slate-200"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${integrations.printerAPI ? "translate-x-6" : "translate-x-1"}`}
-          />
-        </button>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-slate-600 mb-1.5">
-          Slack Webhook URL
-        </label>
-        <input
-          type="text"
-          value={integrations.slackWebhook}
-          onChange={(e) =>
-            setIntegrations({ ...integrations, slackWebhook: e.target.value })
-          }
-          placeholder="https://hooks.slack.com/services/..."
-          className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-        />
-        <p className="text-xs text-slate-400 mt-1">
-          Receive notifications in your Slack channel
-        </p>
-      </div>
-
-      <div className="border-t border-slate-100 pt-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">
-          Email Server Settings
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              SMTP Host
-            </label>
-            <input
-              type="text"
-              value={integrations.emailServer.host}
-              onChange={(e) =>
-                setIntegrations({
-                  ...integrations,
-                  emailServer: {
-                    ...integrations.emailServer,
-                    host: e.target.value,
-                  },
-                })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5">
-              SMTP Port
-            </label>
-            <input
-              type="text"
-              value={integrations.emailServer.port}
-              onChange={(e) =>
-                setIntegrations({
-                  ...integrations,
-                  emailServer: {
-                    ...integrations.emailServer,
-                    port: e.target.value,
-                  },
-                })
-              }
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Backup & Data Tab
-  const BackupSettings = () => (
-    <div className="space-y-6">
+  // Notification Settings (unchanged UI, keep as is)
+  const NotificationSettings = () => (
+    <div className="space-y-4">
       <div className="flex items-center justify-between py-3 border-b border-slate-100">
         <div>
-          <p className="font-medium text-slate-900">Automatic Backups</p>
+          <p className="font-medium text-slate-900">Email Notifications</p>
           <p className="text-xs text-slate-500">
-            Regularly backup your data to prevent loss
+            Receive system notifications via email
           </p>
         </div>
         <button
           onClick={() =>
-            setLabSettings({
-              ...labSettings,
-              autoBackup: !labSettings.autoBackup,
+            setNotifications({
+              ...notifications,
+              emailNotifications: !notifications.emailNotifications,
             })
           }
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            labSettings.autoBackup ? "bg-slate-900" : "bg-slate-200"
-          }`}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifications.emailNotifications ? "bg-slate-900" : "bg-slate-200"}`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${labSettings.autoBackup ? "translate-x-6" : "translate-x-1"}`}
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.emailNotifications ? "translate-x-6" : "translate-x-1"}`}
           />
         </button>
       </div>
-
-      {labSettings.autoBackup && (
+      <div className="flex items-center justify-between py-3 border-b border-slate-100">
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1.5">
-            Backup Frequency
-          </label>
-          <select
-            value={labSettings.backupFrequency}
-            onChange={(e) =>
-              setLabSettings({
-                ...labSettings,
-                backupFrequency: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
-          >
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
+          <p className="font-medium text-slate-900">Low Stock Alerts</p>
+          <p className="text-xs text-slate-500">
+            Get notified when inventory is running low
+          </p>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-        <button className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-          <Download size={16} />
-          Export Data
-        </button>
-        <button className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition">
-          <Upload size={16} />
-          Import Data
+        <button
+          onClick={() =>
+            setNotifications({
+              ...notifications,
+              lowStockAlerts: !notifications.lowStockAlerts,
+            })
+          }
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifications.lowStockAlerts ? "bg-slate-900" : "bg-slate-200"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.lowStockAlerts ? "translate-x-6" : "translate-x-1"}`}
+          />
         </button>
       </div>
-
-      <div className="border-t border-slate-100 pt-6">
-        <div className="bg-amber-50 rounded-xl p-4">
-          <div className="flex gap-3">
-            <AlertTriangle size={18} className="text-amber-600 shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800">Danger Zone</p>
-              <p className="text-xs text-amber-700 mt-1">
-                Permanently delete all lab data. This action cannot be undone.
-              </p>
-              <button className="mt-3 flex items-center gap-2 text-sm text-red-600 hover:text-red-700 font-medium">
-                <Trash2 size={14} />
-                Delete All Data
-              </button>
-            </div>
-          </div>
+      <div className="flex items-center justify-between py-3 border-b border-slate-100">
+        <div>
+          <p className="font-medium text-slate-900">Maintenance Alerts</p>
+          <p className="text-xs text-slate-500">
+            Equipment maintenance reminders and updates
+          </p>
         </div>
+        <button
+          onClick={() =>
+            setNotifications({
+              ...notifications,
+              maintenanceAlerts: !notifications.maintenanceAlerts,
+            })
+          }
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifications.maintenanceAlerts ? "bg-slate-900" : "bg-slate-200"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.maintenanceAlerts ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
+      <div className="flex items-center justify-between py-3 border-b border-slate-100">
+        <div>
+          <p className="font-medium text-slate-900">Daily Digest</p>
+          <p className="text-xs text-slate-500">
+            Receive a summary of daily activities
+          </p>
+        </div>
+        <button
+          onClick={() =>
+            setNotifications({
+              ...notifications,
+              dailyDigest: !notifications.dailyDigest,
+            })
+          }
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${notifications.dailyDigest ? "bg-slate-900" : "bg-slate-200"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications.dailyDigest ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
       </div>
     </div>
   );
 
-  // Appearance Tab
+  // Appearance Settings (unchanged UI)
   const AppearanceSettings = () => (
     <div className="space-y-6">
       <div>
@@ -770,7 +541,6 @@ export default function Settings({ userRole }) {
           </div>
         </div>
       </div>
-
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1.5">
           Primary Color
@@ -787,7 +557,6 @@ export default function Settings({ userRole }) {
           />
         </div>
       </div>
-
       <div>
         <label className="block text-xs font-medium text-slate-600 mb-1.5">
           System Name
@@ -798,7 +567,7 @@ export default function Settings({ userRole }) {
           onChange={(e) =>
             setBranding({ ...branding, systemName: e.target.value })
           }
-          className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 transition"
+          className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-xl"
         />
       </div>
     </div>
@@ -806,24 +575,29 @@ export default function Settings({ userRole }) {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "general":
-        return <GeneralSettings />;
       case "profile":
         return <ProfileSettings />;
-      case "notifications":
-        return <NotificationSettings />;
       case "security":
         return <SecuritySettings />;
-      case "integration":
-        return <IntegrationSettings />;
-      case "backup":
-        return <BackupSettings />;
+      case "notifications":
+        return <NotificationSettings />;
       case "appearance":
         return <AppearanceSettings />;
       default:
-        return <GeneralSettings />;
+        return <ProfileSettings />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -832,7 +606,7 @@ export default function Settings({ userRole }) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your laboratory system preferences
+            Manage your profile and preferences
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -844,17 +618,10 @@ export default function Settings({ userRole }) {
           )}
           <button
             onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-medium rounded-xl hover:bg-slate-50"
           >
             <RefreshCw size={16} />
             Reset
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors cursor-pointer"
-          >
-            <Save size={16} />
-            Save Changes
           </button>
         </div>
       </div>
@@ -868,11 +635,7 @@ export default function Settings({ userRole }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-slate-50 text-slate-900 font-medium border-l-2 border-slate-900"
-                    : "text-slate-600 hover:bg-slate-50"
-                }`}
+                className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors ${activeTab === tab.id ? "bg-slate-50 text-slate-900 font-medium border-l-2 border-slate-900" : "text-slate-600 hover:bg-slate-50"}`}
               >
                 <div className="flex items-center gap-3">
                   {tab.icon}

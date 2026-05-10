@@ -1,11 +1,13 @@
+DROP SCHEMA IF EXISTS clams CASCADE;
+CREATE SCHEMA clams;
 
-CREATE SCHEMA IF NOT EXISTS clams;
-
+-- Categories
 CREATE TABLE clams.categories (
     category_id     SERIAL PRIMARY KEY,
     category_name   VARCHAR(100) NOT NULL
 );
 
+-- Laboratories
 CREATE TABLE clams.laboratories (
     lab_id          SERIAL PRIMARY KEY,
     lab_name        VARCHAR(100) NOT NULL,
@@ -15,6 +17,7 @@ CREATE TABLE clams.laboratories (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Users
 CREATE TABLE clams.users (
     user_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_number       VARCHAR(50)  UNIQUE NOT NULL,
@@ -26,9 +29,11 @@ CREATE TABLE clams.users (
     role            VARCHAR(20),
     profile_img     TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted      BOOLEAN DEFAULT FALSE
 );
 
+-- Equipment
 CREATE TABLE clams.equipment (
     equipment_id    SERIAL PRIMARY KEY,
     asset_tag       VARCHAR(100) UNIQUE,
@@ -46,18 +51,23 @@ CREATE TABLE clams.equipment (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Peripherals – each row is ONE physical item
 CREATE TABLE clams.peripherals (
     peripheral_id   SERIAL PRIMARY KEY,
+    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
     lab_id          INTEGER REFERENCES clams.laboratories(lab_id),
     category_id     INTEGER REFERENCES clams.categories(category_id),
     item_name       VARCHAR(255) NOT NULL,
     brand           VARCHAR(100),
-    working_count   INTEGER DEFAULT 0,
-    damaged_count   INTEGER DEFAULT 0,
-    -- total_count removed: derive as (working_count + damaged_count)
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status          VARCHAR(50) DEFAULT 'working',
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted      BOOLEAN DEFAULT FALSE,
+    CONSTRAINT chk_peripheral_location CHECK (
+        (equipment_id IS NOT NULL) OR (lab_id IS NOT NULL)
+    )
 );
 
+-- Borrow transactions
 CREATE TABLE clams.borrow_transactions (
     transaction_id          SERIAL PRIMARY KEY,
     instructor_id           UUID    REFERENCES clams.users(user_id),
@@ -70,7 +80,6 @@ CREATE TABLE clams.borrow_transactions (
     expected_return_date    TIMESTAMP,
     actual_return_date      TIMESTAMP,
     remarks                 TEXT,
-
     CONSTRAINT chk_borrow_target CHECK (
         (equipment_id IS NOT NULL AND peripheral_id IS NULL)
         OR
@@ -78,6 +87,7 @@ CREATE TABLE clams.borrow_transactions (
     )
 );
 
+-- Damage reports
 CREATE TABLE clams.damage_reports (
     report_id       SERIAL PRIMARY KEY,
     instructor_id   UUID    REFERENCES clams.users(user_id),
@@ -90,6 +100,7 @@ CREATE TABLE clams.damage_reports (
     resolved_at     TIMESTAMP
 );
 
+-- Activity logs
 CREATE TABLE clams.activity_logs (
     log_id          SERIAL PRIMARY KEY,
     user_id         UUID REFERENCES clams.users(user_id),
@@ -98,3 +109,55 @@ CREATE TABLE clams.activity_logs (
     record_id       INTEGER,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================================
+-- TRIGGER: automatically update laboratories.total_stations
+-- based on active (non‑deleted) equipment in the lab
+-- ============================================================
+CREATE OR REPLACE FUNCTION clams.update_lab_total_stations()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Insert: new equipment added
+    IF TG_OP = 'INSERT' THEN
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    
+    -- Soft delete: is_deleted changed from false → true
+    ELSIF TG_OP = 'UPDATE' AND OLD.is_deleted = false AND NEW.is_deleted = true THEN
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    
+    -- Lab changed: equipment moved to another lab
+    ELSIF TG_OP = 'UPDATE' AND OLD.lab_id IS DISTINCT FROM NEW.lab_id THEN
+        -- Old lab
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = OLD.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = OLD.lab_id;
+        -- New lab
+        UPDATE clams.laboratories
+        SET total_stations = (
+            SELECT COUNT(*) FROM clams.equipment
+            WHERE lab_id = NEW.lab_id AND is_deleted = false
+        )
+        WHERE lab_id = NEW.lab_id;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_lab_total_stations
+AFTER INSERT OR UPDATE OF is_deleted, lab_id ON clams.equipment
+FOR EACH ROW
+EXECUTE FUNCTION clams.update_lab_total_stations();

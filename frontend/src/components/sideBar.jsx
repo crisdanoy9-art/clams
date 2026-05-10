@@ -1,3 +1,4 @@
+// frontend/src/components/sideBar.jsx
 import React from "react";
 import {
   LayoutDashboard,
@@ -22,17 +23,14 @@ const NavItem = ({ icon, label, isActive, isExpanded, onClick }) => (
           : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
       }`}
   >
-    {/* Active Indicator */}
     {isActive && (
       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full z-30" />
     )}
 
-    {/* FIXED ICON ANCHOR: This never moves because w-14 is constant */}
     <div className="w-14 h-full flex items-center justify-center shrink-0 z-20">
       {icon}
     </div>
 
-    {/* SMOOTH SLIDING TEXT - TEXT SIZE REDUCED */}
     <span
       className={`text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-in-out
         ${
@@ -53,6 +51,8 @@ const Sidebar = ({
   expanded,
   onExpandChange,
 }) => {
+  console.log("Sidebar rendering with userRole:", userRole); // Debug log
+
   const navItems = [
     {
       id: "dashboard",
@@ -85,32 +85,37 @@ const Sidebar = ({
       roles: ["admin", "instructor"],
     },
     {
-      id: "damage",
+      id: "reports",
       label: "Damage Reports",
       icon: <AlertTriangle size={20} />,
-      roles: ["instructor"],
+      roles: ["admin", "instructor"], // Both can see damage reports
     },
     {
       id: "users",
       label: "User Management",
       icon: <Users size={20} />,
-      roles: ["admin"],
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      icon: <FileBarChart size={20} />,
-      roles: ["admin"],
+      roles: ["admin"], // Only admin
     },
     {
       id: "logs",
       label: "Activity Logs",
       icon: <History size={20} />,
-      roles: ["admin"],
+      roles: ["admin"], // Only admin
     },
   ];
 
-  const filtered = navItems.filter((item) => item.roles.includes(userRole));
+  // Filter nav items based on user role
+  const filtered = userRole
+    ? navItems.filter((item) => item.roles.includes(userRole))
+    : [];
+
+  console.log("Filtered nav items:", filtered.length); // Debug log
+
+  // If no userRole or no items, show nothing
+  if (!userRole || filtered.length === 0) {
+    console.log("No sidebar items to show");
+    return null;
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -132,17 +137,30 @@ const Sidebar = ({
       className={`h-screen bg-white border-r border-slate-100 flex flex-col shrink-0 transition-all duration-300 ease-in-out z-20
         ${expanded ? "w-64" : "w-20"}`}
     >
+<<<<<<< HEAD
       {/* Logo Area - TEXT SIZE REDUCED */}
        <div className="h-28 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
         <div className="w-24 h-full flex items-center justify-center shrink-0">
           <div className="w-16 h-14 flex items-center justify-center">
+=======
+      {/* Logo Area */}
+      <div className="h-20 flex items-center border-b border-slate-100 shrink-0 relative overflow-hidden">
+        <div className="w-20 h-full flex items-center justify-center shrink-0">
+          <div className="w-14 h-10 flex items-center justify-center">
+>>>>>>> origin/main
             <img
-              src="../../public/logo.png"
+              src="/logo.png"
               alt="logo"
+<<<<<<< HEAD
               className="w-16 h-14 object-contain block animate-logo-spin dark:brightness-110 dark:drop-shadow-glow"
               style={{
                 transformOrigin: "center center",
                 backfaceVisibility: "hidden",
+=======
+              className="w-14 h-10 object-contain block animate-logo-spin"
+              onError={(e) => {
+                e.target.src = "https://via.placeholder.com/56x40?text=CLAMS";
+>>>>>>> origin/main
               }}
             />
           </div>
@@ -158,8 +176,13 @@ const Sidebar = ({
           <p className="text-2xl font-black text-slate-900 whitespace-nowrap leading-tight tracking-tighter">
             CLAMS
           </p>
+<<<<<<< HEAD
           <p className="text-xs text-indigo-600 whitespace-nowrap mt-2 font-semibold uppercase tracking-wider">
             Management System
+=======
+          <p className="text-[9px] text-indigo-600 whitespace-nowrap mt-1 font-semibold uppercase tracking-wider">
+            Management
+>>>>>>> origin/main
           </p>
         </div>
       </div>

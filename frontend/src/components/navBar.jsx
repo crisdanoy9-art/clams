@@ -1,6 +1,11 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from "react";
 import { User, Info, Moon, Sun, ChevronDown } from "lucide-react";
 import AboutModal from "./AboutModal";
+=======
+import { useState, useEffect } from "react";
+import { Settings, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
+>>>>>>> origin/main
 
 export function Navbar({ currentView, userRole, onLogout, onNavigate }) {
   const [currentTime, setCurrentTime] = useState(new Date());
