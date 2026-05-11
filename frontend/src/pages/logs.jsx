@@ -12,22 +12,37 @@ const ACTION_STYLES = {
   REPORT: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   LOGIN: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   LOGOUT: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400",
+  BULK_CREATE: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  BULK_DELETE: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
 export default function ActivityLogs({ onRefresh }) {
   const [logs, setLogs] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 50
+  });
   const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const itemsPerPage = 10;
   const isMounted = useRef(true);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/activity-logs");
+      const response = await axiosInstance.get(`/activity-logs?limit=50&page=${page}`);
+      
       if (isMounted.current) {
-        setLogs(response.data || []);
+        // Ensure logs is always an array
+        const logsData = response.data?.logs || [];
+        setLogs(Array.isArray(logsData) ? logsData : []);
+        setPagination({
+          currentPage: response.data?.pagination?.currentPage || 1,
+          totalPages: response.data?.pagination?.totalPages || 1,
+          totalItems: response.data?.pagination?.totalItems || 0,
+          itemsPerPage: response.data?.pagination?.itemsPerPage || 50
+        });
       }
       if (onRefresh && typeof onRefresh === 'function') onRefresh();
     } catch (error) {
@@ -45,17 +60,15 @@ export default function ActivityLogs({ onRefresh }) {
 
   useEffect(() => {
     isMounted.current = true;
-    fetchLogs();
+    fetchLogs(1);
+    
     return () => {
       isMounted.current = false;
     };
   }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
-
-  const filteredLogs = logs.filter((log) => {
+  // Filter logs - ensure logs is an array before filtering
+  const filteredLogs = Array.isArray(logs) ? logs.filter((log) => {
     if (!log) return false;
     const searchTerm = search.toLowerCase();
     return (
@@ -65,11 +78,17 @@ export default function ActivityLogs({ onRefresh }) {
       (log.first_name?.toLowerCase() || "").includes(searchTerm) ||
       (log.last_name?.toLowerCase() || "").includes(searchTerm)
     );
-  });
+  }) : [];
 
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedLogs = filteredLogs.slice(startIndex, startIndex + itemsPerPage);
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchLogs(newPage);
+    }
+  };
+
+  const handleManualRefresh = () => {
+    fetchLogs(pagination.currentPage);
+  };
 
   const getDisplayName = (log) => {
     if (log.first_name && log.last_name) {
@@ -79,8 +98,10 @@ export default function ActivityLogs({ onRefresh }) {
     return "System";
   };
 
-  const handleManualRefresh = () => {
-    fetchLogs();
+  const getActionStyle = (action) => {
+    if (action === "BULK_CREATE") return ACTION_STYLES.BULK_CREATE;
+    if (action === "BULK_DELETE") return ACTION_STYLES.BULK_DELETE;
+    return ACTION_STYLES[action] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
   };
 
   if (loading && logs.length === 0) {
@@ -101,7 +122,7 @@ export default function ActivityLogs({ onRefresh }) {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Activity Logs</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {logs.length} total records
+            {pagination.totalItems} total records
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -136,7 +157,7 @@ export default function ActivityLogs({ onRefresh }) {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Total Logs</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{logs.length}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{pagination.totalItems}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">System events</p>
           </div>
         </div>
@@ -146,7 +167,7 @@ export default function ActivityLogs({ onRefresh }) {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Unique Users</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{new Set(logs.map(l => l.user_id)).size}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{new Set(Array.isArray(logs) ? logs.map(l => l.user_id) : []).size}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">Active participants</p>
           </div>
         </div>
@@ -157,11 +178,11 @@ export default function ActivityLogs({ onRefresh }) {
           <div>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Today's Logs</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {logs.filter(l => {
+              {Array.isArray(logs) ? logs.filter(l => {
                 if (!l.created_at) return false;
                 const today = new Date().toDateString();
                 return new Date(l.created_at).toDateString() === today;
-              }).length}
+              }).length : 0}
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500">Last 24 hours</p>
           </div>
@@ -172,7 +193,7 @@ export default function ActivityLogs({ onRefresh }) {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Admin Actions</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">{logs.filter(l => l.user_role === "admin").length}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{Array.isArray(logs) ? logs.filter(l => l.user_role === "admin").length : 0}</p>
             <p className="text-xs text-slate-400 dark:text-slate-500">By administrators</p>
           </div>
         </div>
@@ -188,18 +209,18 @@ export default function ActivityLogs({ onRefresh }) {
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">User</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Action</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Table</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Record ID</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {paginatedLogs.length === 0 ? (
+              {filteredLogs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">
                     {search ? "No matching activity logs found." : "No activity logs available."}
                   </td>
                 </tr>
               ) : (
-                paginatedLogs.map((log, index) => (
+                filteredLogs.map((log, index) => (
                   <tr
                     key={log.log_id || index}
                     className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200"
@@ -228,22 +249,27 @@ export default function ActivityLogs({ onRefresh }) {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${
-                          ACTION_STYLES[log.action] || "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                        }`}
+                        className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full ${getActionStyle(log.action)}`}
                       >
                         {log.action || "UNKNOWN"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                        {log.table_affected || "-"}
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono capitalize">
+                        {log.table_affected?.replace(/_/g, " ") || "-"}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                        {log.record_id !== null && log.record_id !== undefined ? log.record_id : "-"}
-                      </span>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {log.bulk_count > 1 ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="font-semibold">{log.bulk_count}</span> items
+                            {log.bulk_details && <span className="text-slate-400">({log.bulk_details})</span>}
+                          </span>
+                        ) : (
+                          <span>ID: {log.record_id !== null && log.record_id !== undefined ? log.record_id : "-"}</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -254,25 +280,25 @@ export default function ActivityLogs({ onRefresh }) {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between pt-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredLogs.length)} of {filteredLogs.length} entries
+            Showing page {pagination.currentPage} of {pagination.totalPages} ({pagination.totalItems} total entries)
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              onClick={() => handlePageChange(pagination.currentPage - 1)}
+              disabled={pagination.currentPage === 1}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
             </button>
             <span className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">
-              Page {currentPage} of {totalPages}
+              Page {pagination.currentPage} of {pagination.totalPages}
             </span>
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(pagination.currentPage + 1)}
+              disabled={pagination.currentPage === pagination.totalPages}
               className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Settings, LogOut, ChevronDown, Shield, User, Moon, Sun } from "lucide-react";
+import { Settings, Info, ChevronDown, Shield, User, Moon, Sun } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
-export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigate, darkMode, setDarkMode }) {
+export function Navbar({ currentView, userRole, currentUser, onNavigate, darkMode, setDarkMode }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -21,10 +22,16 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
   });
 
   const username = currentUser?.username || localStorage.getItem("userName") || "User";
-  const userEmail = currentUser?.email || localStorage.getItem("userEmail") || "";
   const userFirstName = currentUser?.first_name || "";
   const userLastName = currentUser?.last_name || "";
-  const displayName = userFirstName ? `${userFirstName} ${userLastName}` : username;
+  
+  let displayName = "CLAMS ADMIN";
+  if (userFirstName && userLastName) {
+    displayName = `${userFirstName} ${userLastName}`.toUpperCase();
+  } else if (username) {
+    displayName = username.toUpperCase();
+  }
+
   const firstLetter = displayName.charAt(0).toUpperCase();
 
   const viewTitle = currentView
@@ -32,22 +39,26 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
     .replace(/^./, (s) => s.toUpperCase())
     .trim();
 
-  const getRoleBadge = () => {
+  const getRoleLabel = () => {
     if (userRole === "admin") {
-      return {
-        label: "Admin",
-        icon: <Shield size={14} />,
-        color: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-      };
+      return "Administrator";
     }
-    return {
-      label: "Instructor",
-      icon: <User size={14} />,
-      color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-    };
+    return "Instructor";
   };
 
-  const roleBadge = getRoleBadge();
+  const getRoleIcon = () => {
+    if (userRole === "admin") {
+      return <Shield size={14} className="text-purple-600 dark:text-purple-400" />;
+    }
+    return <User size={14} className="text-blue-600 dark:text-blue-400" />;
+  };
+
+  const getRoleColor = () => {
+    if (userRole === "admin") {
+      return "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300";
+    }
+    return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+  };
 
   const toggleDarkMode = () => {
     const newMode = !darkMode;
@@ -61,17 +72,20 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
   };
 
   return (
-    <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 transition-colors">
-      <div>
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white capitalize">
+    <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+      {/* Left Side - Title */}
+      <div className="pl-8">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-white capitalize">
           {viewTitle}
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tracking-wide">
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 tracking-wide">
           CCS Laboratory Asset Management System
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      {/* Right Side */}
+      <div className="flex items-center gap-4 pr-8">
+        {/* Time */}
         <div className="hidden md:flex flex-col items-end">
           <span className="text-sm font-mono font-semibold text-slate-700 dark:text-slate-300">
             {timeString}
@@ -81,17 +95,23 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
 
         <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
 
+        {/* Notification Bell */}
+        <NotificationBell userRole={userRole} onNavigate={onNavigate} />
+
+        {/* User Info */}
         <div className="hidden sm:flex flex-col items-end">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-slate-800 dark:text-white">{displayName}</p>
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge.color}`}>
-              {roleBadge.icon}
-              {roleBadge.label}
+          <p className="text-sm font-bold text-slate-800 dark:text-white tracking-wide">
+            {displayName}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {getRoleIcon()}
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleColor()}`}>
+              {getRoleLabel()}
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">JRMSU Main Campus</p>
         </div>
 
+        {/* Avatar Menu - About, Settings, Dark Mode */}
         <div className="relative">
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -122,16 +142,30 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
                       {firstLetter}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-800 dark:text-white">{displayName}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{userEmail || username}</p>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${roleBadge.color}`}>
-                        {roleBadge.icon}
-                        {roleBadge.label}
-                      </span>
+                      <p className="text-sm font-bold text-slate-800 dark:text-white">{displayName}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        {getRoleIcon()}
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${getRoleColor()}`}>
+                          {getRoleLabel()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* About Button */}
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onNavigate("about");
+                  }}
+                  className="w-full text-left px-4 py-3 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-3 transition-colors"
+                >
+                  <Info size={17} className="text-slate-500 dark:text-slate-400" />
+                  <span className="font-medium">About</span>
+                </button>
+
+                {/* Settings Button */}
                 <button
                   onClick={() => {
                     setIsUserMenuOpen(false);
@@ -143,6 +177,7 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
                   <span className="font-medium">Settings</span>
                 </button>
 
+                {/* Dark Mode Toggle */}
                 <button
                   onClick={() => {
                     toggleDarkMode();
@@ -156,19 +191,6 @@ export function Navbar({ currentView, userRole, currentUser, onLogout, onNavigat
                     <Moon size={17} className="text-slate-500 dark:text-slate-400" />
                   )}
                   <span className="font-medium">{darkMode ? "Light Mode" : "Dark Mode"}</span>
-                </button>
-
-                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-
-                <button
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    onLogout();
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 flex items-center gap-3 transition-colors"
-                >
-                  <LogOut size={17} />
-                  <span className="font-medium">Log out</span>
                 </button>
               </div>
             </>

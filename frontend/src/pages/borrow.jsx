@@ -7,8 +7,6 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  User,
-  Monitor,
   RefreshCw,
 } from "lucide-react";
 import axiosInstance from "../lib/axios";
@@ -34,6 +32,7 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [newBorrow, setNewBorrow] = useState({
     item_type: "equipment",
     item_id: "",
@@ -137,8 +136,16 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
   };
 
   const handleSubmitBorrow = async () => {
-    if (!newBorrow.item_id || !newBorrow.expected_return_date) {
-      toast.error("Please fill in all required fields");
+    // Prevent multiple submissions
+    if (submitting) return;
+    
+    // Validate form
+    if (!newBorrow.item_id) {
+      toast.error("Please select an item to borrow");
+      return;
+    }
+    if (!newBorrow.expected_return_date) {
+      toast.error("Please select an expected return date");
       return;
     }
     if (quantityError) {
@@ -146,9 +153,22 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
       return;
     }
 
+    setSubmitting(true);
+
     try {
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      const borrowerName = userData.username || currentUser?.username || "Unknown User";
+      const instructorId = userData.user_id || currentUser?.user_id;
+
+      if (!instructorId) {
+        toast.error("User not authenticated");
+        setSubmitting(false);
+        return;
+      }
+
       const borrowData = {
-        borrower_name: currentUser?.username || localStorage.getItem("userName"),
+        instructor_id: instructorId,
+        borrower_name: borrowerName,
         quantity: parseInt(newBorrow.quantity),
         expected_return_date: newBorrow.expected_return_date,
         remarks: newBorrow.remarks || "",
@@ -160,8 +180,16 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
         borrowData.peripheral_id = parseInt(newBorrow.item_id);
       }
 
-      await axiosInstance.post("/create/borrow_transactions", { data: borrowData });
-      toast.success("Borrow request submitted");
+      console.log("Submitting:", borrowData);
+
+      const response = await axiosInstance.post("/create/borrow_transactions", { 
+        data: borrowData 
+      });
+      
+      console.log("Response:", response.data);
+      toast.success("Borrow request submitted successfully!");
+      
+      // Reset form and close modal
       setIsFormOpen(false);
       setNewBorrow({
         item_type: "equipment",
@@ -171,10 +199,16 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
         remarks: "",
       });
       setQuantityError("");
-      fetchData();
+      
+      // Refresh data
+      await fetchData();
+      
     } catch (error) {
       console.error("Error submitting borrow:", error);
-      toast.error("Failed to submit borrow request");
+      const errorMsg = error.response?.data?.error || error.response?.data?.msg || "Failed to submit borrow request";
+      toast.error(errorMsg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,6 +267,11 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
     }
   };
 
+  // Check if form is valid
+  const isFormValid = () => {
+    return !quantityError && newBorrow.item_id && newBorrow.expected_return_date;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -246,6 +285,7 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -287,7 +327,17 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
           </button>
           {userRole === "instructor" && (
             <button
-              onClick={() => setIsFormOpen(true)}
+              onClick={() => {
+                setIsFormOpen(true);
+                setNewBorrow({
+                  item_type: "equipment",
+                  item_id: "",
+                  quantity: 1,
+                  expected_return_date: "",
+                  remarks: "",
+                });
+                setQuantityError("");
+              }}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition transform hover:scale-105"
             >
               <Plus size={16} /> Borrow Item
@@ -296,6 +346,7 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
         </div>
       </div>
 
+      {/* Stats Cards */}
       {userRole === "admin" ? (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
@@ -364,13 +415,14 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
         </div>
       )}
 
+      {/* Transactions Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300 hover:shadow-lg">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">ID</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Item / PC Name</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Item</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Borrower</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Qty</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Borrow Date</th>
@@ -383,10 +435,8 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
                 <tr key={transaction.transaction_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-200">
                   <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600 dark:text-slate-400">TR-{transaction.transaction_id}</td>
                   <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-slate-800 dark:text-white">{transaction.item_name}</p>
-                      <p className="text-xs text-slate-400 font-mono">{transaction.pc_name || "Peripheral"}</p>
-                    </div>
+                    <p className="font-medium text-slate-800 dark:text-white">{transaction.item_name}</p>
+                    <p className="text-xs text-slate-400 font-mono">{transaction.pc_name || "Peripheral"}</p>
                   </td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{transaction.borrower_name}</td>
                   <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{transaction.quantity}</td>
@@ -428,6 +478,7 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
         </div>
       </div>
 
+      {/* View Transaction Modal */}
       {isViewModalOpen && selectedTransaction && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-xl">
@@ -442,24 +493,57 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Item / PC Name</label><p className="text-base font-semibold text-slate-900 dark:text-white mt-1">{selectedTransaction.item_name}</p><p className="text-sm text-slate-500 font-mono">{selectedTransaction.pc_name || "Peripheral"}</p></div>
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Quantity</label><p className="text-base font-semibold text-slate-900 dark:text-white mt-1">{selectedTransaction.quantity}</p></div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Item</label>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white mt-1">{selectedTransaction.item_name}</p>
+                  <p className="text-sm text-slate-500 font-mono">{selectedTransaction.pc_name || "Peripheral"}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Quantity</label>
+                  <p className="text-base font-semibold text-slate-900 dark:text-white mt-1">{selectedTransaction.quantity}</p>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Borrower</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{selectedTransaction.borrower_name}</p></div>
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Status</label><div className="mt-1"><span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[selectedTransaction.transaction_status]}`}>{getStatusIcon(selectedTransaction.transaction_status)}{STATUS_LABELS[selectedTransaction.transaction_status]}</span></div></div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Borrower</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{selectedTransaction.borrower_name}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Status</label>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_STYLES[selectedTransaction.transaction_status]}`}>
+                      {getStatusIcon(selectedTransaction.transaction_status)}
+                      {STATUS_LABELS[selectedTransaction.transaction_status]}
+                    </span>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Borrow Date</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.borrow_date).toLocaleString()}</p></div>
-                <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Expected Return Date</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.expected_return_date).toLocaleString()}</p></div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Borrow Date</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.borrow_date).toLocaleString()}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Expected Return</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.expected_return_date).toLocaleString()}</p>
+                </div>
               </div>
-              {selectedTransaction.actual_return_date && (<div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Actual Return Date</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.actual_return_date).toLocaleString()}</p></div>)}
-              <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Remarks</label><p className="text-sm text-slate-600 dark:text-slate-400 mt-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">{selectedTransaction.remarks || "No remarks provided"}</p></div>
+              {selectedTransaction.actual_return_date && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Actual Return Date</label>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{new Date(selectedTransaction.actual_return_date).toLocaleString()}</p>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Remarks</label>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg">{selectedTransaction.remarks || "No remarks provided"}</p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* New Borrow Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700 shadow-xl">
@@ -471,15 +555,25 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Item Type *</label>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="radio" value="equipment" checked={newBorrow.item_type === "equipment"} onChange={(e) => { setNewBorrow({ ...newBorrow, item_type: e.target.value, item_id: "", quantity: 1 }); setQuantityError(""); }} className="w-4 h-4 text-slate-900" /><span className="text-sm text-slate-700 dark:text-slate-300">Equipment</span></label>
-                  <label className="flex items-center gap-2 cursor-pointer"><input type="radio" value="peripheral" checked={newBorrow.item_type === "peripheral"} onChange={(e) => { setNewBorrow({ ...newBorrow, item_type: e.target.value, item_id: "", quantity: 1 }); setQuantityError(""); }} className="w-4 h-4 text-slate-900" /><span className="text-sm text-slate-700 dark:text-slate-300">Peripheral</span></label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="equipment" checked={newBorrow.item_type === "equipment"} onChange={(e) => { setNewBorrow({ ...newBorrow, item_type: e.target.value, item_id: "", quantity: 1 }); setQuantityError(""); }} className="w-4 h-4 text-slate-900" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Equipment</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="peripheral" checked={newBorrow.item_type === "peripheral"} onChange={(e) => { setNewBorrow({ ...newBorrow, item_type: e.target.value, item_id: "", quantity: 1 }); setQuantityError(""); }} className="w-4 h-4 text-slate-900" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Peripheral</span>
+                  </label>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Select {newBorrow.item_type === "equipment" ? "Equipment" : "Peripheral"} *</label>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Select Item *</label>
                 <select value={newBorrow.item_id} onChange={(e) => handleItemChange(e.target.value)} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white">
                   <option value="">Select an item</option>
-                  {(newBorrow.item_type === "equipment" ? getAvailableEquipment() : getAvailablePeripherals()).map((item) => (<option key={item.equipment_id || item.peripheral_id} value={item.equipment_id || item.peripheral_id}>{item.item_name} ({item.pc_name || `Available: ${item.working_count}`})</option>))}
+                  {(newBorrow.item_type === "equipment" ? getAvailableEquipment() : getAvailablePeripherals()).map((item) => (
+                    <option key={item.equipment_id || item.peripheral_id} value={item.equipment_id || item.peripheral_id}>
+                      {item.item_name} ({item.pc_name || `Available: ${item.working_count}`})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -492,7 +586,7 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Expected Return Date *</label>
                 <input type="datetime-local" value={newBorrow.expected_return_date} onChange={(e) => setNewBorrow({ ...newBorrow, expected_return_date: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white" />
-                <p className="text-xs text-slate-400 mt-1">Standard borrowing period is 7 days</p>
+                <p className="text-xs text-slate-400 mt-1">Select when the item should be returned</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Remarks</label>
@@ -500,8 +594,30 @@ export default function BorrowTransactions({ userRole, currentUser, onRefresh })
               </div>
             </div>
             <div className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex justify-end gap-3">
-              <button onClick={() => setIsFormOpen(false)} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
-              <button onClick={handleSubmitBorrow} disabled={!!quantityError || !newBorrow.item_id || !newBorrow.expected_return_date} className="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Submit Borrow Request</button>
+              <button 
+                onClick={() => setIsFormOpen(false)} 
+                className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSubmitBorrow} 
+                disabled={!isFormValid() || submitting}
+                className={`px-5 py-2.5 text-sm font-medium text-white rounded-xl transition flex items-center gap-2 ${
+                  isFormValid() && !submitting
+                    ? "bg-slate-900 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 cursor-pointer"
+                    : "bg-slate-300 dark:bg-slate-600 cursor-not-allowed opacity-50"
+                }`}
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Borrow Request"
+                )}
+              </button>
             </div>
           </div>
         </div>

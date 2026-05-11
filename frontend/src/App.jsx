@@ -12,13 +12,13 @@ import BorrowTransactions from "./pages/borrow";
 import Login from "./pages/login";
 import ActivityLogs from "./pages/logs";
 import UserManagement from "./pages/users";
+import About from "./pages/about";
 import { useRefresh } from "./contexts/RefreshContext";
 
 const App = () => {
   const [userRole, setUserRole] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => {
@@ -27,6 +27,7 @@ const App = () => {
   });
   const { triggerRefresh } = useRefresh();
 
+  // Apply dark mode class to html element
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -35,6 +36,7 @@ const App = () => {
     }
   }, [darkMode]);
 
+  // Check for existing session on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -91,6 +93,7 @@ const App = () => {
     setCurrentUser(null);
     setIsLoggedIn(false);
     setCurrentView("dashboard");
+    triggerRefresh();
   };
 
   const renderView = () => {
@@ -121,6 +124,8 @@ const App = () => {
         return <ActivityLogs {...props} />;
       case "settings":
         return <Settings {...props} />;
+      case "about":
+        return <About {...props} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
@@ -179,29 +184,33 @@ const App = () => {
           },
         }}
       />
+      
+      {/* Sidebar with logout and user info */}
       <Sidebar
         onSelect={handleSetView}
         activeView={currentView}
         userRole={userRole}
-        expanded={sidebarExpanded}
-        onExpandChange={setSidebarExpanded}
+        onLogout={handleLogout}
+        currentUser={currentUser}
         darkMode={darkMode}
       />
 
+      {/* Main Content Area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar
           currentView={currentView}
           userRole={userRole}
           currentUser={currentUser}
-          onLogout={handleLogout}
           onNavigate={handleSetView}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 max-w-7xl mx-auto">{renderView()}</div>
-          <footer className="px-8 pb-6 text-center text-xs text-slate-300 dark:text-slate-700 tracking-widest uppercase">
+          <div className="p-8 max-w-7xl mx-auto">
+            {renderView()}
+          </div>
+          <footer className="px-8 pb-6 text-center text-xs text-slate-400 dark:text-slate-600 tracking-widest uppercase">
             JRMSU — College of Computing Studies © 2026
           </footer>
         </main>

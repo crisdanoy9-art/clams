@@ -1,13 +1,22 @@
+-- ============================================================
+-- CLAMS - Computer Laboratory Asset Management System
+-- Complete Database Schema
+-- ============================================================
+
 DROP SCHEMA IF EXISTS clams CASCADE;
 CREATE SCHEMA clams;
 
--- Categories
+-- ============================================================
+-- TABLE: categories
+-- ============================================================
 CREATE TABLE clams.categories (
     category_id     SERIAL PRIMARY KEY,
     category_name   VARCHAR(100) NOT NULL
 );
 
--- Laboratories
+-- ============================================================
+-- TABLE: laboratories
+-- ============================================================
 CREATE TABLE clams.laboratories (
     lab_id          SERIAL PRIMARY KEY,
     lab_name        VARCHAR(100) NOT NULL,
@@ -17,23 +26,28 @@ CREATE TABLE clams.laboratories (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Users
+-- ============================================================
+-- TABLE: users
+-- ============================================================
 CREATE TABLE clams.users (
-    user_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_number       VARCHAR(50) UNIQUE NOT NULL,
-    username        VARCHAR(50) UNIQUE NOT NULL,
-    password_hash   TEXT NOT NULL,
-    first_name      VARCHAR(100),
-    last_name       VARCHAR(100),
-    email           VARCHAR(150) UNIQUE,
-    role            VARCHAR(20) DEFAULT 'instructor',
-    profile_img     TEXT,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_deleted      BOOLEAN DEFAULT FALSE
+    user_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_number          VARCHAR(50) UNIQUE NOT NULL,
+    username           VARCHAR(50) UNIQUE NOT NULL,
+    password_hash      TEXT NOT NULL,
+    first_name         VARCHAR(100),
+    last_name          VARCHAR(100),
+    email              VARCHAR(150) UNIQUE,
+    role               VARCHAR(20) DEFAULT 'instructor',
+    profile_img        TEXT,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_deleted         BOOLEAN DEFAULT FALSE,
+    last_logs_viewed   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Equipment (with pc_name instead of asset_tag)
+-- ============================================================
+-- TABLE: equipment
+-- ============================================================
 CREATE TABLE clams.equipment (
     equipment_id    SERIAL PRIMARY KEY,
     pc_name         VARCHAR(100) UNIQUE,
@@ -51,7 +65,9 @@ CREATE TABLE clams.equipment (
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Peripherals
+-- ============================================================
+-- TABLE: peripherals
+-- ============================================================
 CREATE TABLE clams.peripherals (
     peripheral_id   SERIAL PRIMARY KEY,
     equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
@@ -67,7 +83,9 @@ CREATE TABLE clams.peripherals (
     )
 );
 
--- Borrow transactions
+-- ============================================================
+-- TABLE: borrow_transactions
+-- ============================================================
 CREATE TABLE clams.borrow_transactions (
     transaction_id          SERIAL PRIMARY KEY,
     instructor_id           UUID REFERENCES clams.users(user_id),
@@ -87,7 +105,9 @@ CREATE TABLE clams.borrow_transactions (
     )
 );
 
--- Damage reports
+-- ============================================================
+-- TABLE: damage_reports
+-- ============================================================
 CREATE TABLE clams.damage_reports (
     report_id       SERIAL PRIMARY KEY,
     instructor_id   UUID REFERENCES clams.users(user_id),
@@ -100,17 +120,23 @@ CREATE TABLE clams.damage_reports (
     resolved_at     TIMESTAMP
 );
 
--- Activity logs
+-- ============================================================
+-- TABLE: activity_logs
+-- ============================================================
 CREATE TABLE clams.activity_logs (
     log_id          SERIAL PRIMARY KEY,
     user_id         UUID REFERENCES clams.users(user_id),
     action          TEXT NOT NULL,
     table_affected  VARCHAR(100),
     record_id       INTEGER,
+    bulk_count      INTEGER DEFAULT 1,
+    bulk_details    TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Trigger to update total_stations
+-- ============================================================
+-- TRIGGER: update laboratories.total_stations
+-- ============================================================
 CREATE OR REPLACE FUNCTION clams.update_lab_total_stations()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -154,3 +180,23 @@ CREATE TRIGGER trigger_update_lab_total_stations
 AFTER INSERT OR UPDATE OF is_deleted, lab_id ON clams.equipment
 FOR EACH ROW
 EXECUTE FUNCTION clams.update_lab_total_stations();
+
+-- ============================================================
+-- INDEXES for performance
+-- ============================================================
+CREATE INDEX idx_equipment_lab_id ON clams.equipment(lab_id);
+CREATE INDEX idx_equipment_status ON clams.equipment(status);
+CREATE INDEX idx_equipment_is_deleted ON clams.equipment(is_deleted);
+CREATE INDEX idx_equipment_pc_name ON clams.equipment(pc_name);
+CREATE INDEX idx_peripherals_lab_id ON clams.peripherals(lab_id);
+CREATE INDEX idx_peripherals_equipment_id ON clams.peripherals(equipment_id);
+CREATE INDEX idx_borrow_transactions_status ON clams.borrow_transactions(status);
+CREATE INDEX idx_borrow_transactions_instructor_id ON clams.borrow_transactions(instructor_id);
+CREATE INDEX idx_damage_reports_status ON clams.damage_reports(status);
+CREATE INDEX idx_damage_reports_instructor_id ON clams.damage_reports(instructor_id);
+CREATE INDEX idx_activity_logs_created_at ON clams.activity_logs(created_at);
+CREATE INDEX idx_activity_logs_user_id ON clams.activity_logs(user_id);
+CREATE INDEX idx_activity_logs_action ON clams.activity_logs(action);
+CREATE INDEX idx_users_role ON clams.users(role);
+CREATE INDEX idx_users_is_deleted ON clams.users(is_deleted);
+
