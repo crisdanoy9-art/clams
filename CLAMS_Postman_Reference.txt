@@ -36,15 +36,17 @@
 ────────────────────────────────────────────────────────────────────────────────
  NO BODY — Send with Authorization header only.
 
+CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
+
 ────────────────────────────────────────────────────────────────────────────────
  #4  POST /auth/change-password
  Description: Change user password
 ────────────────────────────────────────────────────────────────────────────────
  RAW JSON BODY:
- {
-   "current_password": "Pass@5678",
-   "new_password": "NewPass@9999"
- }
+{
+  "currentPassword": "admin123",
+  "newPassword": "admin0909"
+}
 
 
 ================================================================================

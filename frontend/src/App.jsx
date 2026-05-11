@@ -19,7 +19,6 @@ const App = () => {
   const [userRole, setUserRole] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => {
@@ -28,6 +27,7 @@ const App = () => {
   });
   const { triggerRefresh } = useRefresh();
 
+  // Apply dark mode class to html element
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -36,11 +36,14 @@ const App = () => {
     }
   }, [darkMode]);
 
+  // Check for existing session on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
     const isLoggedInFlag = localStorage.getItem("isLoggedIn");
     const userDataStr = localStorage.getItem("userData");
+
+    console.log("Session check - token:", !!token, "role:", role, "loggedIn:", isLoggedInFlag);
 
     if (token && role && isLoggedInFlag === "true") {
       setUserRole(role);
@@ -48,6 +51,7 @@ const App = () => {
         try {
           const userData = JSON.parse(userDataStr);
           setCurrentUser(userData);
+          console.log("Restored user session:", userData.username, "Role:", userData.role);
         } catch (e) {
           console.error("Error parsing userData", e);
         }
@@ -58,28 +62,44 @@ const App = () => {
         setCurrentView(savedView);
       }
     } else {
+      console.log("No valid session found");
       setIsLoggedIn(false);
     }
     setIsLoading(false);
   }, []);
 
   const handleLogin = (userData) => {
+    console.log("=== LOGIN SUCCESS ===");
+    console.log("User Data:", userData);
+    console.log("User Role:", userData.role);
+    
+    // Set state
     setUserRole(userData.role);
     setCurrentUser(userData);
     setIsLoggedIn(true);
     setCurrentView("dashboard");
+    
+    // Store in localStorage
     localStorage.setItem("currentView", "dashboard");
     localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("role", userData.role);
+    localStorage.setItem("userData", JSON.stringify(userData));
+    localStorage.setItem("userName", userData.username);
+    if (userData.email) localStorage.setItem("userEmail", userData.email);
+    
+    console.log("Stored role in localStorage:", localStorage.getItem("role"));
+    console.log("User role set to:", userData.role);
+    
     triggerRefresh();
   };
 
   const handleSetView = (view) => {
     localStorage.setItem("currentView", view);
     setCurrentView(view);
-    setIsMobileMenuOpen(false);
   };
 
   const handleLogout = () => {
+    console.log("Logging out...");
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("userName");
@@ -186,34 +206,18 @@ const App = () => {
         }}
       />
       
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-      
-      {/* Sidebar - Responsive */}
-      <div 
-        className={`fixed top-0 left-0 h-full z-50 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar
-          onSelect={handleSetView}
-          activeView={currentView}
-          userRole={userRole}
-          onLogout={handleLogout}
-          currentUser={currentUser}
-          darkMode={darkMode}
-          isMobileOpen={isMobileMenuOpen}
-          onMobileClose={() => setIsMobileMenuOpen(false)}
-        />
-      </div>
+      {/* Sidebar - Always Visible */}
+      <Sidebar
+        onSelect={handleSetView}
+        activeView={currentView}
+        userRole={userRole}
+        onLogout={handleLogout}
+        currentUser={currentUser}
+        darkMode={darkMode}
+      />
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 overflow-hidden w-full">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar
           currentView={currentView}
           userRole={userRole}
@@ -221,7 +225,6 @@ const App = () => {
           onNavigate={handleSetView}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
-          onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 
         <main className="flex-1 overflow-y-auto">

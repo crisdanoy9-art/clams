@@ -18,23 +18,23 @@ const NavItem = ({ icon, label, isActive, isExpanded, onClick, darkMode }) => (
       ${
         isActive
           ? darkMode
-            ? "bg-slate-800 text-white shadow-lg"
-            : "bg-slate-900 text-white shadow-lg"
+            ? "bg-slate-800 text-white shadow-lg scale-105"
+            : "bg-slate-900 text-white shadow-lg scale-105"
           : darkMode
-            ? "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-            : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+            ? "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100 hover:scale-105"
+            : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 hover:scale-105"
       }`}
   >
     {isActive && (
       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full z-30" />
     )}
 
-    <div className="w-14 h-full flex items-center justify-center shrink-0 z-20 transition-transform duration-300">
+    <div className="w-14 h-full flex items-center justify-center shrink-0 z-20 transition-transform duration-300 group-hover:scale-110">
       {icon}
     </div>
 
     <span
-      className={`text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-out
+      className={`text-sm font-semibold uppercase tracking-wider whitespace-nowrap transition-all duration-300 ease-out
         ${
           isExpanded
             ? "opacity-100 translate-x-0 delay-100"
@@ -56,6 +56,13 @@ const Sidebar = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Get role from props or localStorage as fallback
+  let effectiveRole = userRole;
+  if (!effectiveRole) {
+    effectiveRole = localStorage.getItem("role");
+  }
+
+  // Define navigation items
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, roles: ["admin", "instructor"] },
     { id: "laboratories", label: "Laboratories", icon: <FlaskConical size={20} />, roles: ["admin", "instructor"] },
@@ -67,18 +74,48 @@ const Sidebar = ({
     { id: "logs", label: "Activity Logs", icon: <History size={20} />, roles: ["admin"] },
   ];
 
-  const filtered = userRole ? navItems.filter((item) => item.roles.includes(userRole)) : [];
+  // Filter navigation items based on user role
+  let filteredNavItems = [];
+  if (effectiveRole === "admin") {
+    filteredNavItems = navItems;
+  } else if (effectiveRole === "instructor") {
+    filteredNavItems = navItems.filter(item => item.roles.includes("instructor"));
+  } else {
+    filteredNavItems = navItems.filter(item => item.roles.includes("instructor"));
+  }
 
-  // Get user display name for logout area
-  const username = currentUser?.username || localStorage.getItem("userName") || "User";
-  const userFirstName = currentUser?.first_name || "";
-  const userLastName = currentUser?.last_name || "";
-  const displayName = userFirstName ? `${userFirstName} ${userLastName}` : username;
-  const firstLetter = displayName.charAt(0).toUpperCase();
-
-  if (!userRole || filtered.length === 0) {
+  // If no items to show, don't render sidebar
+  if (filteredNavItems.length === 0) {
     return null;
   }
+
+  // Get user display name
+  let displayName = "User";
+  let firstLetter = "U";
+  
+  if (currentUser) {
+    if (currentUser.first_name && currentUser.last_name) {
+      displayName = `${currentUser.first_name} ${currentUser.last_name}`;
+    } else if (currentUser.username) {
+      displayName = currentUser.username;
+    }
+    firstLetter = displayName.charAt(0).toUpperCase();
+  } else {
+    const storedUserData = localStorage.getItem("userData");
+    if (storedUserData) {
+      try {
+        const userData = JSON.parse(storedUserData);
+        if (userData.first_name && userData.last_name) {
+          displayName = `${userData.first_name} ${userData.last_name}`;
+        } else if (userData.username) {
+          displayName = userData.username;
+        }
+        firstLetter = displayName.charAt(0).toUpperCase();
+      } catch (e) {}
+    }
+  }
+
+  const displayRole = effectiveRole === "admin" ? "Administrator" : "Instructor";
 
   return (
     <aside
@@ -87,14 +124,14 @@ const Sidebar = ({
       className={`h-screen bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-all duration-500 ease-out z-20 shadow-xl
         ${isExpanded ? "w-72" : "w-20"}`}
     >
-      {/* Logo Area - Smooth Transition */}
-      <div className={`py-6 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 transition-all duration-500 ease-out ${
+      {/* Logo Area - Bigger with Rotating Animation */}
+      <div className={`py-8 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 transition-all duration-500 ease-out ${
         isExpanded ? "px-6" : "px-4 justify-center"
       }`}>
         <div className="flex items-center gap-4">
-          {/* Rotating Logo Image */}
+          {/* Rotating Logo Image - Bigger */}
           <div className={`rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg overflow-hidden transition-all duration-500 ease-out ${
-            isExpanded ? "w-16 h-16" : "w-12 h-12"
+            isExpanded ? "w-20 h-20" : "w-14 h-14"
           }`}>
             <img
               src="/logo.png"
@@ -106,31 +143,31 @@ const Sidebar = ({
                 e.target.style.display = 'none';
                 const fallback = e.target.parentElement;
                 if (fallback) {
-                  fallback.innerHTML = '<span class="font-black text-white text-2xl">C</span>';
+                  fallback.innerHTML = '<span class="font-black text-white text-3xl">C</span>';
                 }
               }}
             />
           </div>
           
-          {/* Text Logo - Smooth Fade and Slide */}
+          {/* Branding Name - Bigger Text */}
           <div
             className={`overflow-hidden transition-all duration-500 ease-out ${
               isExpanded ? "opacity-100 translate-x-0 max-w-[200px] delay-100" : "opacity-0 -translate-x-10 max-w-0 pointer-events-none"
             }`}
           >
-            <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight whitespace-nowrap">
+            <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight whitespace-nowrap">
               CLAMS
             </p>
-            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider whitespace-nowrap">
-              Asset Management
+            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider whitespace-nowrap mt-1">
+              Laps
             </p>
           </div>
         </div>
       </div>
 
-      {/* Navigation - Smooth Items */}
-      <nav className="flex-1 py-6 px-3 flex flex-col gap-2 overflow-y-auto overflow-x-hidden scrollbar-hide">
-        {filtered.map((item, index) => (
+      {/* Navigation Items */}
+      <nav className="flex-1 py-6 px-3 flex flex-col gap-2 overflow-y-auto overflow-x-hidden">
+        {filteredNavItems.map((item, index) => (
           <div
             key={item.id}
             className="transition-all duration-300 ease-out"
@@ -148,24 +185,46 @@ const Sidebar = ({
         ))}
       </nav>
 
-      {/* Logout Section at Bottom - Smooth Transition */}
-      <div className={`border-t border-slate-200 dark:border-slate-800 py-4 transition-all duration-500 ease-out ${
+      {/* Footer - User Info and Logout */}
+      <div className={`border-t border-slate-200 dark:border-slate-800 py-6 transition-all duration-500 ease-out ${
         isExpanded ? "px-4" : "px-2"
       }`}>
+        {/* User Info - Only visible when expanded */}
+        <div
+          className={`mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 transition-all duration-500 ease-out ${
+            isExpanded ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden p-0 mb-0"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+              effectiveRole === "admin" 
+                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            }`}>
+              <span className="text-sm font-bold">{firstLetter}</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{displayName}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{displayRole}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Logout Button - Emphasized on Hover */}
         <button
           onClick={onLogout}
           className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ease-out group ${
-            isExpanded ? "px-3 py-3" : "py-3 justify-center"
+            isExpanded ? "px-4 py-3" : "py-3 justify-center"
           } ${
             darkMode
-              ? "hover:bg-slate-800 text-slate-400 hover:text-red-400"
-              : "hover:bg-red-50 text-slate-600 hover:text-red-600"
-          }`}
+              ? "bg-slate-800/50 text-slate-400 hover:bg-red-600 hover:text-white"
+              : "bg-slate-100 text-slate-600 hover:bg-red-500 hover:text-white"
+          } hover:scale-105 hover:shadow-lg`}
         >
-          <div className={`rounded-lg bg-red-100 dark:bg-red-950/30 flex items-center justify-center transition-all duration-300 ${
-            isExpanded ? "w-10 h-10" : "w-10 h-10"
+          <div className={`rounded-lg flex items-center justify-center transition-all duration-300 ${
+            isExpanded ? "w-5 h-5" : "w-5 h-5"
           }`}>
-            <LogOut size={20} className="text-red-500 transition-transform duration-300 group-hover:scale-110" />
+            <LogOut size={18} className="transition-transform duration-300 group-hover:scale-110" />
           </div>
           <span
             className={`text-sm font-semibold transition-all duration-300 whitespace-nowrap ${
@@ -175,31 +234,6 @@ const Sidebar = ({
             Logout
           </span>
         </button>
-
-        {/* User Info Mini - Smooth Reveal */}
-        <div
-          className={`mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-500 ease-out ${
-            isExpanded ? "opacity-100 max-h-32" : "opacity-0 max-h-0"
-          }`}
-        >
-          <div className="flex items-center gap-3 px-2">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
-              userRole === "admin" 
-                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" 
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-            }`}>
-              <span className="text-sm font-bold">{firstLetter}</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-slate-800 dark:text-white truncate">
-                {displayName}
-              </p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">
-                {userRole}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Animation Styles */}
@@ -221,25 +255,25 @@ const Sidebar = ({
           animation-play-state: paused;
         }
         
-        /* Custom scrollbar for sidebar */
-        .scrollbar-hide::-webkit-scrollbar {
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
           width: 4px;
         }
         
-        .scrollbar-hide::-webkit-scrollbar-track {
+        ::-webkit-scrollbar-track {
           background: transparent;
         }
         
-        .scrollbar-hide::-webkit-scrollbar-thumb {
+        ::-webkit-scrollbar-thumb {
           background: #cbd5e1;
           border-radius: 4px;
         }
         
-        .dark .scrollbar-hide::-webkit-scrollbar-thumb {
+        .dark ::-webkit-scrollbar-thumb {
           background: #475569;
         }
         
-        /* Smooth width transition for sidebar */
+        /* Smooth width transition */
         aside {
           transition-property: width, padding;
           transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
