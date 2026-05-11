@@ -19,6 +19,7 @@ const App = () => {
   const [userRole, setUserRole] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [isLoading, setIsLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => {
@@ -27,7 +28,6 @@ const App = () => {
   });
   const { triggerRefresh } = useRefresh();
 
-  // Apply dark mode class to html element
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -36,7 +36,6 @@ const App = () => {
     }
   }, [darkMode]);
 
-  // Check for existing session on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -77,6 +76,7 @@ const App = () => {
   const handleSetView = (view) => {
     localStorage.setItem("currentView", view);
     setCurrentView(view);
+    setIsMobileMenuOpen(false);
   };
 
   const handleLogout = () => {
@@ -128,7 +128,7 @@ const App = () => {
         return <About {...props} />;
       default:
         return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+          <div className="flex flex-col items-center justify-center min-h-[60vh] border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center">
             <p className="text-base font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
               {currentView}
             </p>
@@ -147,8 +147,8 @@ const App = () => {
     return (
       <div className="flex h-screen bg-slate-50 dark:bg-slate-950 items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-slate-200 dark:border-slate-700 border-t-slate-900 dark:border-t-slate-100 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 dark:text-slate-400">Loading...</p>
+          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-slate-200 dark:border-slate-700 border-t-slate-900 dark:border-t-slate-100 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base">Loading...</p>
         </div>
       </div>
     );
@@ -167,6 +167,7 @@ const App = () => {
           style: {
             background: darkMode ? "#1e293b" : "#363636",
             color: "#fff",
+            fontSize: "14px",
           },
           success: {
             duration: 3000,
@@ -185,18 +186,34 @@ const App = () => {
         }}
       />
       
-      {/* Sidebar with logout and user info */}
-      <Sidebar
-        onSelect={handleSetView}
-        activeView={currentView}
-        userRole={userRole}
-        onLogout={handleLogout}
-        currentUser={currentUser}
-        darkMode={darkMode}
-      />
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar - Responsive */}
+      <div 
+        className={`fixed top-0 left-0 h-full z-50 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Sidebar
+          onSelect={handleSetView}
+          activeView={currentView}
+          userRole={userRole}
+          onLogout={handleLogout}
+          currentUser={currentUser}
+          darkMode={darkMode}
+          isMobileOpen={isMobileMenuOpen}
+          onMobileClose={() => setIsMobileMenuOpen(false)}
+        />
+      </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden w-full">
         <Navbar
           currentView={currentView}
           userRole={userRole}
@@ -204,13 +221,14 @@ const App = () => {
           onNavigate={handleSetView}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
 
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8 max-w-7xl mx-auto">
+          <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
             {renderView()}
           </div>
-          <footer className="px-8 pb-6 text-center text-xs text-slate-400 dark:text-slate-600 tracking-widest uppercase">
+          <footer className="px-4 sm:px-6 md:px-8 pb-4 sm:pb-6 text-center text-xs text-slate-400 dark:text-slate-600 tracking-widest uppercase">
             JRMSU — College of Computing Studies © 2026
           </footer>
         </main>
