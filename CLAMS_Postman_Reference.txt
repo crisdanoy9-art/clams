@@ -1,36 +1,4 @@
-================================================================================
-  CLAMS — CCS Laboratory Asset Management System
-  API POSTMAN REFERENCE
-  45 Endpoints | RESTful API | PostgreSQL + Node.js + Express.js
-  College of Computing Studies — Jose Rizal Memorial State University
-  Group: LapsNadas
-================================================================================
 
-  HOW TO USE:
-  - Copy the endpoint path and set the correct HTTP method in Postman
-  - For POST and PUT requests: Body → raw → JSON → paste the mock body
-  - For GET and DELETE requests: No body needed, just set the Authorization header
-  - Replace :id, :labId, :equipmentId, :peripheralId, :logId, :component
-    with the actual integer ID from your database
-  - Add header:  Authorization: Bearer <your_jwt_token>
-                 Content-Type: application/json
-
-================================================================================
-  TABLE OF CONTENTS
-================================================================================
-
-  [1]  Authentication          — 4  endpoints  (/auth/...)
-  [2]  User Management         — 4  endpoints  (/api/users, /api/create/users...)
-  [3]  Laboratory Management   — 4  endpoints  (/api/laboratories...)
-  [4]  Category Management     — 4  endpoints  (/api/categories...)
-  [5]  Equipment Management    — 6  endpoints  (/api/inventory, /api/equipment...)
-  [6]  Equipment Specs         — 2  endpoints  (/api/update/equipmentspec...)
-  [7]  Peripheral Management   — 8  endpoints  (/api/peripherals...)
-  [8]  Borrow & Return         — 4  endpoints  (/api/transactions...)
-  [9]  Damage Reports          — 4  endpoints  (/api/reports...)
-  [10] Activity Logs           — 5  endpoints  (/api/activity-logs...)
-
-                                              TOTAL: 45 endpoints
 
 ================================================================================
   [1] AUTHENTICATION ENDPOINTS
