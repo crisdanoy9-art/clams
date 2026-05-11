@@ -1,5 +1,3 @@
-
-
 ================================================================================
   [1] AUTHENTICATION ENDPOINTS
 ================================================================================
@@ -8,45 +6,71 @@
  #1  POST /auth/login
  Description: Authenticate user and return JWT token
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+
  RAW JSON BODY:
  {
-   "username": "admin01",
-   "password": "Admin@1234"
+   "username": "admin",
+   "password": "admin123"
+ }
+
+ RESPONSE:
+ {
+   "success": true,
+   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+   "user": {
+     "user_id": 1,
+     "username": "admin",
+     "role": "admin",
+     "first_name": "CLAMS",
+     "last_name": "ADMIN",
+     "email": "admin@clams.edu"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #2  POST /auth/register
- Description: Register new user account
+ Description: Register new user account (Public)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+
  RAW JSON BODY:
  {
+   "id_number": "2021-00123",
    "username": "instructor_leo",
    "password": "Pass@5678",
    "first_name": "Johannes Leo",
    "last_name": "Alolino",
-   "role": "Instructor",
-   "lab_id": 1,
-   "id_number": "2021-00123",
-   "email": "leo.alolino@jrmsu.edu.ph"
+   "email": "leo.alolino@jrmsu.edu.ph",
+   "role": "instructor"
  }
+
+ NOTE: role must be 'admin' or 'instructor' (lowercase)
 
 ────────────────────────────────────────────────────────────────────────────────
  #3  GET /auth/me
  Description: Get current authenticated user profile
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
 
-CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #4  POST /auth/change-password
- Description: Change user password
+ Description: Change password for authenticated user
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
-{
-  "currentPassword": "admin123",
-  "newPassword": "admin0909"
-}
+ {
+   "currentPassword": "admin123",
+   "newPassword": "newadmin0909"
+ }
 
 
 ================================================================================
@@ -55,46 +79,61 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
 
 ────────────────────────────────────────────────────────────────────────────────
  #5  GET /api/users
- Description: Retrieve all user accounts
+ Description: Retrieve all user accounts (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #6  POST /api/create/users
- Description: Create new instructor account (Admin only)
+ Description: Create new user account (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "username": "instructor_cris",
-   "password": "Cris@2024",
-   "first_name": "Cris Lawrence",
-   "last_name": "Danoy",
-   "role": "Instructor",
-   "lab_id": 2,
-   "id_number": "2021-00456",
-   "email": "cris.danoy@jrmsu.edu.ph"
+   "data": {
+     "id_number": "2021-00456",
+     "username": "instructor_cris",
+     "password": "Cris@2024",
+     "first_name": "Cris Lawrence",
+     "last_name": "Danoy",
+     "email": "cris.danoy@jrmsu.edu.ph",
+     "role": "instructor"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #7  PUT /api/update/users/:id
- Description: Update user account details
+ Description: Update user account details (Admin only)
  Example URL: /api/update/users/3
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "first_name": "Cris Lawrence",
-   "last_name": "Danoy",
-   "email": "cris.updated@jrmsu.edu.ph",
-   "lab_id": 3,
-   "id_number": "2021-00456"
+   "data": {
+     "first_name": "Cris Lawrence",
+     "last_name": "Danoy",
+     "email": "cris.updated@jrmsu.edu.ph"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #8  DELETE /api/remove/users/:id
- Description: Soft delete user account (is_deleted = true)
+ Description: Soft delete user account (Admin only)
  Example URL: /api/remove/users/3
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -105,37 +144,56 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
  #9  GET /api/laboratories
  Description: Retrieve all laboratory records
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #10  POST /api/create/laboratories
- Description: Add new laboratory record
+ Description: Add new laboratory record (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "name": "CCS Lab 1",
-   "location": "2nd Floor, CCS Building, JRMSU Main Campus",
-   "total_pcs": 40
+   "data": {
+     "lab_name": "CCS Lab 1",
+     "room_number": "201",
+     "building": "CCS Building",
+     "total_stations": 40
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #11  PUT /api/update/laboratories/:id
- Description: Update laboratory details
+ Description: Update laboratory details (Admin only)
  Example URL: /api/update/laboratories/1
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "name": "CCS Lab 1",
-   "location": "2nd Floor, CCS Building — Room 201",
-   "total_pcs": 42
+   "data": {
+     "lab_name": "CCS Lab 1",
+     "room_number": "201",
+     "total_stations": 42
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #12  DELETE /api/remove/laboratories/:id
- Description: Soft delete laboratory record
+ Description: Soft delete laboratory record (Admin only)
  Example URL: /api/remove/laboratories/1
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -146,35 +204,51 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
  #13  GET /api/categories
  Description: Retrieve all equipment categories
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #14  POST /api/create/categories
- Description: Create new equipment category
+ Description: Create new equipment category (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "name": "Workstations",
-   "description": "Desktop PCs and all-in-one computer units used in the laboratory"
+   "data": {
+     "category_name": "Workstations"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #15  PUT /api/update/categories/:id
- Description: Update category details
+ Description: Update category details (Admin only)
  Example URL: /api/update/categories/2
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "name": "Networking Devices",
-   "description": "Routers, switches, LAN cables, and other networking hardware"
+   "data": {
+     "category_name": "Networking Devices"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #16  DELETE /api/remove/categories/:id
- Description: Soft delete category
+ Description: Soft delete category (Admin only)
  Example URL: /api/remove/categories/2
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -185,89 +259,111 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
  #17  GET /api/inventory
  Description: Get all equipment with lab and category details
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #18  GET /api/equipment-list
- Description: Get lightweight equipment list for dropdowns/selects
+ Description: Get lightweight equipment list for dropdowns
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #19  POST /api/create/equipment
- Description: Add new single equipment record to a laboratory
+ Description: Add new single equipment to a laboratory (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
- RAW JSON BODY:
- {
-   "lab_id": 1,
-   "category_id": 1,
-   "name": "Dell OptiPlex 7010",
-   "brand": "Dell",
-   "model": "OptiPlex 7010",
-   "serial_number": "SN-DELL-LAB1-001",
-   "pc_name": "PC-LAB1-001",
-   "status": "Available",
-   "purchase_date": "2023-06-15",
-   "specs": {
-     "cpu": "Intel Core i5-12400",
-     "cpu_status": "Working",
-     "ram": "8GB DDR4",
-     "ram_status": "Working",
-     "storage": "256GB SSD",
-     "storage_status": "Working",
-     "gpu": "Intel UHD 730",
-     "gpu_status": "Working"
-   }
- }
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
 
+ RAW JSON BODY:
+{
+  "data": {
+    "pc_name": "PC-LAB1-001",
+    "item_name": "Desktop PC",
+    "brand": "Dell",
+    "model": "OptiPlex 7010",
+    "serial_number": "SN-DELL-001",
+    "category_id": 1,
+    "lab_id": 1,
+    "status": "working",
+    "purchase_date": "2023-06-15",
+    "specs": {
+      "cpu": "Intel Core i5-12400",
+      "cpu_status": "good",
+      "ram": "8GB DDR4",
+      "ram_status": "good",
+      "storage": "256GB SSD",
+      "storage_status": "good",
+      "gpu": "Intel UHD 730",
+      "gpu_status": "good"
+    }
+  }
+}
 ────────────────────────────────────────────────────────────────────────────────
  #20  POST /api/create/equipment/bulk
- Description: Bulk create multiple PCs (e.g., PC-LAB2-001 to PC-LAB2-030)
+ Description: Bulk create multiple PCs (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "lab_id": 2,
-   "category_id": 1,
-   "brand": "Lenovo",
-   "model": "ThinkCentre M70s",
-   "prefix": "PC-LAB2",
-   "start": 1,
-   "end": 30,
-   "status": "Available",
-   "purchase_date": "2023-08-01",
-   "specs": {
-     "cpu": "Intel Core i5-11400",
-     "cpu_status": "Working",
-     "ram": "8GB DDR4",
-     "ram_status": "Working",
-     "storage": "512GB SSD",
-     "storage_status": "Working",
-     "gpu": "Intel UHD 730",
-     "gpu_status": "Working"
-   }
- }
-
+  "data": {
+    "pc_name_prefix": "PC-LAB2-",
+    "start_number": 1,
+    "end_number": 30,
+    "item_name": "Desktop PC",
+    "brand": "Lenovo",
+    "model": "ThinkCentre M70s",
+    "category_id": 1,
+    "lab_id": 2,
+    "status": "working",
+    "purchase_date": "2023-08-01",
+    "specs": {
+      "cpu": "Intel Core i5-11400",
+      "cpu_status": "good",
+      "ram": "8GB DDR4",
+      "ram_status": "good",
+      "storage": "512GB SSD",
+      "storage_status": "good",
+      "gpu": "Intel UHD 730",
+      "gpu_status": "good"
+    }
+  }
+}
 ────────────────────────────────────────────────────────────────────────────────
  #21  PUT /api/update/equipment/:id
- Description: Update equipment details or status
+ Description: Update equipment details (Admin only)
  Example URL: /api/update/equipment/5
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "name": "Dell OptiPlex 7010",
-   "brand": "Dell",
-   "model": "OptiPlex 7010",
-   "serial_number": "SN-DELL-LAB1-001",
-   "pc_name": "PC-LAB1-001",
-   "status": "Under Repair"
+   "data": {
+     "pc_name": "PC-LAB1-00122",
+     "status": "for_repair"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #22  DELETE /api/remove/equipment/:id
- Description: Soft delete equipment record (is_deleted = true)
+ Description: Soft delete equipment record (Admin only)
  Example URL: /api/remove/equipment/5
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -275,34 +371,42 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
 ================================================================================
 
 ────────────────────────────────────────────────────────────────────────────────
- #23  PUT /api/update/equipmentspec/:id/:component
- Description: Update a single component status (cpu / ram / storage / gpu)
- Example URL: /api/update/equipmentspec/5/ram
+ #23  PUT /api/update/equipment-spec/:id/:component
+ Description: Update single component status (Admin only)
+ Example URL: /api/update/equipment-spec/5/ram
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "status": "Damaged",
-   "notes": "RAM slot cracked, needs replacement"
+   "data": {
+     "status": "bad"
+   }
  }
+
+ Valid components: cpu, ram, storage, gpu
 
 ────────────────────────────────────────────────────────────────────────────────
  #24  PUT /api/update/equipment-specs/:id
- Description: Update multiple component specs at once
+ Description: Update multiple component specs at once (Admin only)
  Example URL: /api/update/equipment-specs/5
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
+ 
  {
-   "specs": {
-     "cpu": "Intel Core i7-12700",
-     "cpu_status": "Working",
-     "ram": "16GB DDR4",
-     "ram_status": "Working",
-     "storage": "1TB SSD",
-     "storage_status": "Working",
-     "gpu": "NVIDIA GTX 1650",
-     "gpu_status": "Damaged"
-   }
- }
+  "data": {
+    "cpu_status": "good",
+    "ram_status": "bad",
+    "storage_status": "good",
+    "gpu_status": "good"
+  }
+}
 
 
 ================================================================================
@@ -311,82 +415,116 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
 
 ────────────────────────────────────────────────────────────────────────────────
  #25  GET /api/peripherals
- Description: Get peripheral inventory summary with working/damaged counts
+ Description: Get peripheral inventory summary with counts
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #26  GET /api/peripherals/stock/:labId
- Description: Get available peripherals in a specific lab stock
+ Description: Get available peripherals in a specific lab
  Example URL: /api/peripherals/stock/1
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #27  GET /api/equipment/:equipmentId/peripherals
- Description: Get all peripherals currently attached to a specific PC
+ Description: Get peripherals attached to a specific PC
  Example URL: /api/equipment/5/peripherals
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #28  POST /api/create/peripherals/bulk
- Description: Bulk add multiple copies of a peripheral type to a lab
+ Description: Bulk add peripheral copies to a lab (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "lab_id": 1,
-   "category_id": 2,
-   "type": "Keyboard",
-   "item_name": "Logitech K120 USB Keyboard",
-   "brand": "Logitech",
-   "status": "working",
-   "quantity": 40
+   "data": {
+     "item_name": "Logitech K120 Keyboard",
+     "brand": "Logitech",
+     "category_id": 2,
+     "lab_id": 1,
+     "copies": 40
+   }
  }
-
- NOTE — Valid peripheral types:
-   Monitor | Keyboard | Mouse | Headset | UPS/AVR | LAN Cable | Router
 
 ────────────────────────────────────────────────────────────────────────────────
  #29  POST /api/peripherals/delete-type
- Description: Delete multiple peripheral units by type from a lab
+ Description: Delete multiple peripheral units by type (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "lab_id": 1,
-   "type": "Headset",
-   "quantity": 5
+   "data": {
+     "item_name": "Logitech K120 Keyboard",
+     "brand": "Logitech",
+     "quantity": 5
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #30  PUT /api/peripherals/:peripheralId/status
- Description: Update status of an individual peripheral unit
+ Description: Update status of an individual peripheral (Admin only)
  Example URL: /api/peripherals/12/status
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "status": "damaged",
-   "notes": "Scroll wheel broken, unresponsive"
+   "data": {
+     "status": "damaged"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #31  POST /api/equipment/:equipmentId/attach-peripheral
- Description: Attach a peripheral unit to a specific PC
- Example URL: /api/equipment/5/attach-peripheral
+ Description: Attach peripheral to a PC (Admin only)
+ Example URL: /api/equipment/1/attach-peripheral
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "peripheral_id": 12
+   "data": {
+     "peripheral_id": 12
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #32  POST /api/equipment/:equipmentId/detach-peripheral
- Description: Detach a peripheral unit from a PC
- Example URL: /api/equipment/5/detach-peripheral
+ Description: Detach peripheral from a PC (Admin only)
+ Example URL: /api/equipment/1/detach-peripheral
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "peripheral_id": 12
+   "data": {
+     "peripheral_id": 12,
+     "new_status": "working"
+   }
  }
 
 
@@ -398,40 +536,58 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
  #33  GET /api/transactions
  Description: Get all borrow and return transactions
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #34  POST /api/create/borrow_transactions
- Description: Create a new borrow transaction (Instructor only)
+ Description: Create new borrow transaction (Instructor only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "equipment_id": 5,
-   "processed_by": 3,
-   "borrower_name": "Juan Dela Cruz",
-   "quantity_borrowed": 1,
-   "borrow_date": "2026-05-11",
-   "expected_return_date": "2026-05-14",
-   "status": "Borrowed"
+   "data": {
+     "equipment_id": 5,
+     "quantity": 1,
+     "borrower_name": "Juan Dela Cruz",
+     "expected_return_date": "2026-05-14T10:00:00",
+     "remarks": "For classroom demonstration"
+   }
  }
+
+ NOTE: instructor_id is auto-filled from JWT token
 
 ────────────────────────────────────────────────────────────────────────────────
  #35  PUT /api/update/borrow_transactions/:id
- Description: Update transaction — mark item as returned
+ Description: Mark transaction as returned
  Example URL: /api/update/borrow_transactions/7
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "status": "Returned",
-   "actual_return_date": "2026-05-13"
+   "data": {
+     "status": "returned",
+     "actual_return_date": "2026-05-13T15:30:00"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #36  DELETE /api/remove/borrow_transactions/:id
- Description: Soft delete a borrow transaction record
+ Description: Soft delete borrow transaction (Admin only)
  Example URL: /api/remove/borrow_transactions/7
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -442,40 +598,58 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
  #37  GET /api/reports
  Description: Get all damage and maintenance reports
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #38  POST /api/create/damage_reports
- Description: Submit a new damage report (Instructor only)
+ Description: Submit new damage report (Instructor only)
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "equipment_id": 8,
-   "reported_by": 3,
-   "description": "Monitor screen flickering intermittently. Likely a loose cable or failing backlight. Reported during afternoon class session.",
-   "status": "Pending",
-   "date_reported": "2026-05-11"
+   "data": {
+     "equipment_id": 8,
+     "subject": "Monitor Flickering",
+     "description": "Screen flickers intermittently. Issue started today.",
+     "status": "open"
+   }
  }
 
- NOTE — Valid status values: Pending | Under Repair | Resolved
+ Valid status: open, in_progress, resolved, rejected
 
 ────────────────────────────────────────────────────────────────────────────────
  #39  PUT /api/update/damage_reports/:id
- Description: Update report status — admin resolves or updates report
+ Description: Update report status (Admin only)
  Example URL: /api/update/damage_reports/4
 ────────────────────────────────────────────────────────────────────────────────
+ HEADERS:
+   Content-Type: application/json
+   Authorization: Bearer YOUR_TOKEN
+
  RAW JSON BODY:
  {
-   "status": "Under Repair",
-   "description": "Technician has been notified. Unit pulled from active use pending repair."
+   "data": {
+     "status": "resolved",
+     "admin_remarks": "Replaced monitor. Issue resolved.",
+     "resolved_at": "2026-05-13T16:00:00"
+   }
  }
 
 ────────────────────────────────────────────────────────────────────────────────
  #40  DELETE /api/remove/damage_reports/:id
- Description: Soft delete a damage report record
+ Description: Soft delete damage report (Admin only)
  Example URL: /api/remove/damage_reports/4
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
 ================================================================================
@@ -484,121 +658,50 @@ CAN ONLY CHANGE PASS WHEN LOGIN OR HAS token paste in bearer
 
 ────────────────────────────────────────────────────────────────────────────────
  #41  GET /api/activity-logs
- Description: Get all system activity logs (paginated, Admin only)
+ Description: Get all system activity logs (Admin only)
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
- Optional query params: ?page=1&limit=20
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ QUERY PARAMS (optional):
+   ?page=1&limit=20
 
 ────────────────────────────────────────────────────────────────────────────────
  #42  GET /api/activities/unread-count
- Description: Get count of unread notifications for current user
+ Description: Get count of unread activities for current user
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #43  GET /api/activities/recent
- Description: Get 10 most recent activity entries for current user
+ Description: Get recent activities for current user
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ QUERY PARAMS (optional):
+   ?limit=10&page=1
 
 ────────────────────────────────────────────────────────────────────────────────
  #44  PUT /api/activities/mark-read
- Description: Mark all notifications as read for current user
+ Description: Mark all activities as read for current user
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 ────────────────────────────────────────────────────────────────────────────────
  #45  PUT /api/activities/:logId/mark-read
- Description: Mark a single notification as read
+ Description: Mark a single activity as read
  Example URL: /api/activities/22/mark-read
 ────────────────────────────────────────────────────────────────────────────────
- NO BODY — Send with Authorization header only.
+ HEADERS:
+   Authorization: Bearer YOUR_TOKEN
+
+ NO BODY
 
 
-================================================================================
-  QUICK REFERENCE — ENDPOINT SUMMARY
-================================================================================
-
-  #   METHOD   ENDPOINT                                        GROUP
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  1   POST     /auth/login                                     Authentication
-  2   POST     /auth/register                                  Authentication
-  3   GET      /auth/me                                        Authentication
-  4   POST     /auth/change-password                           Authentication
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  5   GET      /api/users                                      User Management
-  6   POST     /api/create/users                               User Management
-  7   PUT      /api/update/users/:id                           User Management
-  8   DELETE   /api/remove/users/:id                           User Management
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  9   GET      /api/laboratories                               Laboratory
-  10  POST     /api/create/laboratories                        Laboratory
-  11  PUT      /api/update/laboratories/:id                    Laboratory
-  12  DELETE   /api/remove/laboratories/:id                    Laboratory
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  13  GET      /api/categories                                 Category
-  14  POST     /api/create/categories                          Category
-  15  PUT      /api/update/categories/:id                      Category
-  16  DELETE   /api/remove/categories/:id                      Category
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  17  GET      /api/inventory                                  Equipment
-  18  GET      /api/equipment-list                             Equipment
-  19  POST     /api/create/equipment                           Equipment
-  20  POST     /api/create/equipment/bulk                      Equipment
-  21  PUT      /api/update/equipment/:id                       Equipment
-  22  DELETE   /api/remove/equipment/:id                       Equipment
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  23  PUT      /api/update/equipmentspec/:id/:component        Specs
-  24  PUT      /api/update/equipment-specs/:id                 Specs
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  25  GET      /api/peripherals                                Peripherals
-  26  GET      /api/peripherals/stock/:labId                   Peripherals
-  27  GET      /api/equipment/:equipmentId/peripherals         Peripherals
-  28  POST     /api/create/peripherals/bulk                    Peripherals
-  29  POST     /api/peripherals/delete-type                    Peripherals
-  30  PUT      /api/peripherals/:peripheralId/status           Peripherals
-  31  POST     /api/equipment/:equipmentId/attach-peripheral   Peripherals
-  32  POST     /api/equipment/:equipmentId/detach-peripheral   Peripherals
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  33  GET      /api/transactions                               Borrow & Return
-  34  POST     /api/create/borrow_transactions                 Borrow & Return
-  35  PUT      /api/update/borrow_transactions/:id             Borrow & Return
-  36  DELETE   /api/remove/borrow_transactions/:id             Borrow & Return
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  37  GET      /api/reports                                    Damage Reports
-  38  POST     /api/create/damage_reports                      Damage Reports
-  39  PUT      /api/update/damage_reports/:id                  Damage Reports
-  40  DELETE   /api/remove/damage_reports/:id                  Damage Reports
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-  41  GET      /api/activity-logs                              Activity Logs
-  42  GET      /api/activities/unread-count                    Activity Logs
-  43  GET      /api/activities/recent                          Activity Logs
-  44  PUT      /api/activities/mark-read                       Activity Logs
-  45  PUT      /api/activities/:logId/mark-read                Activity Logs
-  ─── ──────── ─────────────────────────────────────────────── ──────────────────
-
-================================================================================
-  VALID FIELD VALUES
-================================================================================
-
-  equipment.status       : Available | Borrowed | Damaged | Under Repair
-  component status       : Working | Damaged
-  peripheral.status      : working | damaged
-  peripheral.type        : Monitor | Keyboard | Mouse | Headset
-                           UPS/AVR | LAN Cable | Router
-  damage_reports.status  : Pending | Under Repair | Resolved
-  borrow_transactions.status : Borrowed | Returned
-  users.role             : Admin | Instructor
-
-================================================================================
-  SOFT DELETE NOTE
-================================================================================
-
-  All DELETE endpoints use soft delete — no data is permanently removed.
-  The is_deleted flag is set to TRUE and the record is archived.
-  To filter active records in your queries, always add: WHERE is_deleted = FALSE
-
-================================================================================
-  Group LapsNadas | Course: Information Management | Mr. Mark Mascardo
-  Jose Rizal Memorial State University — Main Campus | April 29, 2026
-================================================================================

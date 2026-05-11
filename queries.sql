@@ -1,6 +1,6 @@
 -- ============================================================
 -- CLAMS - Computer Laboratory Asset Management System
--- Complete Database Schema
+-- Complete Database Schema (NO UUID - All INTEGER IDs)
 -- ============================================================
 
 DROP SCHEMA IF EXISTS clams CASCADE;
@@ -11,7 +11,7 @@ CREATE SCHEMA clams;
 -- ============================================================
 CREATE TABLE clams.categories (
     category_id     SERIAL PRIMARY KEY,
-    category_name   VARCHAR(100) NOT NULL
+    category_name   VARCHAR(100) NOT NULL UNIQUE
 );
 
 -- ============================================================
@@ -19,7 +19,7 @@ CREATE TABLE clams.categories (
 -- ============================================================
 CREATE TABLE clams.laboratories (
     lab_id          SERIAL PRIMARY KEY,
-    lab_name        VARCHAR(100) NOT NULL,
+    lab_name        VARCHAR(100) NOT NULL UNIQUE,
     room_number     VARCHAR(50),
     building        VARCHAR(100),
     total_stations  INTEGER DEFAULT 0,
@@ -27,10 +27,10 @@ CREATE TABLE clams.laboratories (
 );
 
 -- ============================================================
--- TABLE: users
+-- TABLE: users (SERIAL INTEGER - NO UUID)
 -- ============================================================
 CREATE TABLE clams.users (
-    user_id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id            SERIAL PRIMARY KEY,
     id_number          VARCHAR(50) UNIQUE NOT NULL,
     username           VARCHAR(50) UNIQUE NOT NULL,
     password_hash      TEXT NOT NULL,
@@ -42,7 +42,9 @@ CREATE TABLE clams.users (
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_deleted         BOOLEAN DEFAULT FALSE,
-    last_logs_viewed   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_logs_viewed   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT chk_user_role CHECK (role IN ('admin', 'instructor'))
 );
 
 -- ============================================================
@@ -52,17 +54,19 @@ CREATE TABLE clams.equipment (
     equipment_id    SERIAL PRIMARY KEY,
     pc_name         VARCHAR(100) UNIQUE,
     item_name       VARCHAR(255) NOT NULL,
-    category_id     INTEGER REFERENCES clams.categories(category_id),
+    category_id     INTEGER REFERENCES clams.categories(category_id) ON DELETE SET NULL,
     brand           VARCHAR(100),
     model           VARCHAR(100),
     serial_number   VARCHAR(100),
     specs           JSONB,
-    lab_id          INTEGER REFERENCES clams.laboratories(lab_id),
+    lab_id          INTEGER REFERENCES clams.laboratories(lab_id) ON DELETE SET NULL,
     status          VARCHAR(50) DEFAULT 'working',
     purchase_date   DATE,
     is_deleted      BOOLEAN DEFAULT FALSE,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT chk_equipment_status CHECK (status IN ('working', 'for_repair', 'retired', 'lost'))
 );
 
 -- ============================================================
@@ -70,27 +74,29 @@ CREATE TABLE clams.equipment (
 -- ============================================================
 CREATE TABLE clams.peripherals (
     peripheral_id   SERIAL PRIMARY KEY,
-    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
-    lab_id          INTEGER REFERENCES clams.laboratories(lab_id),
-    category_id     INTEGER REFERENCES clams.categories(category_id),
+    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id) ON DELETE SET NULL,
+    lab_id          INTEGER REFERENCES clams.laboratories(lab_id) ON DELETE SET NULL,
+    category_id     INTEGER REFERENCES clams.categories(category_id) ON DELETE SET NULL,
     item_name       VARCHAR(255) NOT NULL,
     brand           VARCHAR(100),
     status          VARCHAR(50) DEFAULT 'working',
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_deleted      BOOLEAN DEFAULT FALSE,
+    
     CONSTRAINT chk_peripheral_location CHECK (
         (equipment_id IS NOT NULL) OR (lab_id IS NOT NULL)
-    )
+    ),
+    CONSTRAINT chk_peripheral_status CHECK (status IN ('working', 'damaged'))
 );
 
 -- ============================================================
--- TABLE: borrow_transactions
+-- TABLE: borrow_transactions (INTEGER for user references)
 -- ============================================================
 CREATE TABLE clams.borrow_transactions (
     transaction_id          SERIAL PRIMARY KEY,
-    instructor_id           UUID REFERENCES clams.users(user_id),
-    equipment_id            INTEGER REFERENCES clams.equipment(equipment_id),
-    peripheral_id           INTEGER REFERENCES clams.peripherals(peripheral_id),
+    instructor_id           INTEGER REFERENCES clams.users(user_id) ON DELETE SET NULL,
+    equipment_id            INTEGER REFERENCES clams.equipment(equipment_id) ON DELETE SET NULL,
+    peripheral_id           INTEGER REFERENCES clams.peripherals(peripheral_id) ON DELETE SET NULL,
     quantity                INTEGER DEFAULT 1,
     borrower_name           VARCHAR(255),
     status                  VARCHAR(50) DEFAULT 'borrowed',
@@ -98,34 +104,38 @@ CREATE TABLE clams.borrow_transactions (
     expected_return_date    TIMESTAMP,
     actual_return_date      TIMESTAMP,
     remarks                 TEXT,
+    
     CONSTRAINT chk_borrow_target CHECK (
         (equipment_id IS NOT NULL AND peripheral_id IS NULL)
         OR
         (equipment_id IS NULL AND peripheral_id IS NOT NULL)
-    )
+    ),
+    CONSTRAINT chk_borrow_status CHECK (status IN ('borrowed', 'returned', 'overdue'))
 );
 
 -- ============================================================
--- TABLE: damage_reports
+-- TABLE: damage_reports (INTEGER for user references)
 -- ============================================================
 CREATE TABLE clams.damage_reports (
     report_id       SERIAL PRIMARY KEY,
-    instructor_id   UUID REFERENCES clams.users(user_id),
-    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id),
+    instructor_id   INTEGER REFERENCES clams.users(user_id) ON DELETE SET NULL,
+    equipment_id    INTEGER REFERENCES clams.equipment(equipment_id) ON DELETE SET NULL,
     subject         VARCHAR(255),
     description     TEXT,
     status          VARCHAR(50) DEFAULT 'open',
     admin_remarks   TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at     TIMESTAMP
+    resolved_at     TIMESTAMP,
+    
+    CONSTRAINT chk_report_status CHECK (status IN ('open', 'in_progress', 'resolved', 'rejected'))
 );
 
 -- ============================================================
--- TABLE: activity_logs
+-- TABLE: activity_logs (INTEGER for user references)
 -- ============================================================
 CREATE TABLE clams.activity_logs (
     log_id          SERIAL PRIMARY KEY,
-    user_id         UUID REFERENCES clams.users(user_id),
+    user_id         INTEGER REFERENCES clams.users(user_id) ON DELETE SET NULL,
     action          TEXT NOT NULL,
     table_affected  VARCHAR(100),
     record_id       INTEGER,
@@ -199,4 +209,13 @@ CREATE INDEX idx_activity_logs_user_id ON clams.activity_logs(user_id);
 CREATE INDEX idx_activity_logs_action ON clams.activity_logs(action);
 CREATE INDEX idx_users_role ON clams.users(role);
 CREATE INDEX idx_users_is_deleted ON clams.users(is_deleted);
+CREATE INDEX idx_users_username ON clams.users(username);
+
+-- ============================================================
+-- DEFAULT DATA (Seeded via seed.js)
+-- ============================================================
+-- Users will be inserted by seed.js with:
+-- Admin:    username: 'admin',     password: 'admin123'
+-- Instructor: username: 'ins',      password: 'ins123'
+-- ============================================================
 

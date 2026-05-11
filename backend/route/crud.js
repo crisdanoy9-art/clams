@@ -2,7 +2,9 @@ import { Router } from "express";
 import { verifyToken } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 import { 
-  Post, Update, Remove, 
+  Post, 
+  Update, 
+  Remove, 
   getUnreadActivityCount, 
   markActivitiesAsRead, 
   markSingleActivityAsRead,
@@ -34,7 +36,7 @@ crud.post("/create/equipment/bulk", verifyToken, BulkCreateEquipment);
 crud.post("/create/peripherals/bulk", verifyToken, BulkCreatePeripherals);
 
 // ==========================
-// PUBLIC GET ROUTES (no token)
+// PUBLIC GET ROUTES (no token required)
 // ==========================
 crud.get("/inventory", getAllInventory);
 crud.get("/transactions", getAllTransactionHistory);
@@ -174,14 +176,14 @@ crud.get("/activity-logs", verifyToken, async (req, res) => {
     const countResult = await pool.query(`SELECT COUNT(*) as total FROM clams.activity_logs`);
     const total = parseInt(countResult.rows[0].total);
     
-    let query = `
-      SELECT al.*, u.first_name, u.last_name, u.username, u.role as user_role
-      FROM clams.activity_logs al
-      LEFT JOIN clams.users u ON al.user_id = u.user_id
-      ORDER BY al.created_at DESC
-      LIMIT $1 OFFSET $2
-    `;
-    const result = await pool.query(query, [itemsPerPage, offset]);
+    const result = await pool.query(
+      `SELECT al.*, u.first_name, u.last_name, u.username, u.role as user_role
+       FROM clams.activity_logs al
+       LEFT JOIN clams.users u ON al.user_id = u.user_id
+       ORDER BY al.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [itemsPerPage, offset]
+    );
     
     res.json({
       logs: result.rows,
@@ -199,10 +201,8 @@ crud.get("/activity-logs", verifyToken, async (req, res) => {
 });
 
 // ==========================
-// PERIPHERAL BULK OPERATIONS
+// PERIPHERAL OPERATIONS
 // ==========================
-crud.post("/create/peripherals/bulk", verifyToken, BulkCreatePeripherals);
-
 crud.post("/peripherals/delete-type", verifyToken, async (req, res) => {
   const { item_name, brand, quantity } = req.body.data;
   if (!item_name || !quantity || quantity <= 0) {
@@ -224,10 +224,6 @@ crud.post("/peripherals/delete-type", verifyToken, async (req, res) => {
        RETURNING peripheral_id`,
       [item_name, brandValue, quantity]
     );
-    
-    // Log bulk delete
-    const { logBulkActivity } = await import("../controller/crudController.js");
-    await logBulkActivity(req.user.user_id, "BULK_DELETE", "peripherals", null, result.rowCount, `Deleted ${result.rowCount} units of ${item_name}`);
     
     res.json({ deleted: result.rowCount });
   } catch (error) {
@@ -317,68 +313,112 @@ crud.post("/equipment/:equipmentId/detach-peripheral", verifyToken, async (req, 
 });
 
 // ==========================
-// EQUIPMENT SPEC UPDATES
+// EQUIPMENT SPEC UPDATES - COMPLETELY FIXED
 // ==========================
-crud.put("/update/equipment-spec/:equipment_id/:component", verifyToken, async (req, res) => {
-  try {
-    const { equipment_id, component } = req.params;
-    const { status } = req.body.data;
-    if (!["good", "bad"].includes(status)) {
-      return res.status(400).json({ error: "Status must be 'good' or 'bad'" });
-    }
-    const path = `{${component}_status}`;
-    const newValue = `"${status}"`;
-    const result = await pool.query(
-      `UPDATE clams.equipment
-       SET specs = jsonb_set(specs, $1, $2, true)
-       WHERE equipment_id = $3
-       RETURNING *`,
-      [path, newValue, equipment_id]
-    );
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Equipment not found" });
-    }
-    res.json({
-      success: true,
-      message: `${component} status updated to ${status}`,
-      equipment: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Error updating spec status:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
+// Update multiple component specs at once
 crud.put("/update/equipment-specs/:equipment_id", verifyToken, async (req, res) => {
   try {
     const { equipment_id } = req.params;
-    const { updates } = req.body.data;
-    let query = `UPDATE clams.equipment SET specs = specs `;
-    const keys = Object.keys(updates);
-    const values = [];
-    keys.forEach((key, index) => {
-      query += `|| jsonb_build_object('${key}', $${index + 1})`;
-      values.push(updates[key]);
-    });
-    query += ` WHERE equipment_id = $${keys.length + 1} RETURNING *`;
-    values.push(equipment_id);
-    const result = await pool.query(query, values);
-    if (result.rows.length === 0) {
+    
+    // Get updates from either req.body.data or req.body
+    let updates = req.body.data || req.body;
+    
+    // Remove any wrapper if present
+    if (updates.updates) {
+      updates = updates.updates;
+    }
+    
+    console.log("Updating specs for equipment:", equipment_id);
+    console.log("Updates:", updates);
+    
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No updates provided" });
+    }
+    
+    // First, get current specs or initialize empty object
+    const currentEquipment = await pool.query(
+      "SELECT specs FROM clams.equipment WHERE equipment_id = $1",
+      [equipment_id]
+    );
+    
+    if (currentEquipment.rows.length === 0) {
       return res.status(404).json({ error: "Equipment not found" });
     }
+    
+    let currentSpecs = currentEquipment.rows[0].specs || {};
+    
+    // Merge updates into current specs
+    Object.keys(updates).forEach(key => {
+      currentSpecs[key] = updates[key];
+    });
+    
+    // Update the database
+    const result = await pool.query(
+      `UPDATE clams.equipment 
+       SET specs = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE equipment_id = $2 
+       RETURNING *`,
+      [currentSpecs, equipment_id]
+    );
+    
     res.json({
       success: true,
       message: "Specs updated successfully",
-      equipment: result.rows[0],
+      equipment: result.rows[0]
     });
+    
   } catch (error) {
     console.error("Error updating specs:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// Update single component status
+crud.put("/update/equipment-spec/:equipment_id/:component", verifyToken, async (req, res) => {
+  try {
+    const { equipment_id, component } = req.params;
+    const { status } = req.body.data || req.body;
+    
+    if (!status || !["good", "bad"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'good' or 'bad'" });
+    }
+    
+    // First, get current specs
+    const currentEquipment = await pool.query(
+      "SELECT specs FROM clams.equipment WHERE equipment_id = $1",
+      [equipment_id]
+    );
+    
+    if (currentEquipment.rows.length === 0) {
+      return res.status(404).json({ error: "Equipment not found" });
+    }
+    
+    let currentSpecs = currentEquipment.rows[0].specs || {};
+    currentSpecs[`${component}_status`] = status;
+    
+    // Update the database
+    const result = await pool.query(
+      `UPDATE clams.equipment 
+       SET specs = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE equipment_id = $2 
+       RETURNING *`,
+      [currentSpecs, equipment_id]
+    );
+    
+    res.json({
+      success: true,
+      message: `${component} status updated to ${status}`,
+      equipment: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error("Error updating spec status:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
 // ==========================
-// GENERIC CRUD
+// GENERIC CRUD (CREATE, UPDATE, DELETE)
 // ==========================
 crud.post("/create/:table", verifyToken, upload.any(), Post);
 crud.put("/update/:table/:id", verifyToken, upload.any(), Update);

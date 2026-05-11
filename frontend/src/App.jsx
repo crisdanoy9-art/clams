@@ -13,6 +13,7 @@ import Login from "./pages/login";
 import ActivityLogs from "./pages/logs";
 import UserManagement from "./pages/users";
 import About from "./pages/about";
+import Categories from "./pages/categories";
 import { useRefresh } from "./contexts/RefreshContext";
 
 const App = () => {
@@ -73,13 +74,11 @@ const App = () => {
     console.log("User Data:", userData);
     console.log("User Role:", userData.role);
     
-    // Set state
     setUserRole(userData.role);
     setCurrentUser(userData);
     setIsLoggedIn(true);
     setCurrentView("dashboard");
     
-    // Store in localStorage
     localStorage.setItem("currentView", "dashboard");
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("role", userData.role);
@@ -88,7 +87,6 @@ const App = () => {
     if (userData.email) localStorage.setItem("userEmail", userData.email);
     
     console.log("Stored role in localStorage:", localStorage.getItem("role"));
-    console.log("User role set to:", userData.role);
     
     triggerRefresh();
   };
@@ -146,6 +144,8 @@ const App = () => {
         return <Settings {...props} />;
       case "about":
         return <About {...props} />;
+      case "categories":
+        return <Categories {...props} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center">

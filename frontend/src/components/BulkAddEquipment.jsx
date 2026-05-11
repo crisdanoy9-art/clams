@@ -73,9 +73,7 @@ export default function BulkAddEquipment({ laboratories, categories, onClose, on
 
         <div className="p-6">
           <form onSubmit={handleRangeSubmit} className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-700 dark:text-blue-400">💡 Example: If you enter Prefix "PC-" from 1 to 10, it will create: PC-1, PC-2, PC-3... PC-10</p>
-            </div>
+            
             
             <div className="grid grid-cols-2 gap-4">
               <div>

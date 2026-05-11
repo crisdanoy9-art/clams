@@ -8,7 +8,8 @@ import {
   AlertTriangle, 
   Users, 
   History, 
-  LogOut
+  LogOut,
+  Layers
 } from "lucide-react";
 
 const NavItem = ({ icon, label, isActive, isExpanded, onClick, darkMode }) => (
@@ -70,6 +71,7 @@ const Sidebar = ({
     { id: "peripherals", label: "Peripherals", icon: <MousePointer2 size={20} />, roles: ["admin", "instructor"] },
     { id: "borrow", label: "Borrow & Return", icon: <ClipboardList size={20} />, roles: ["admin", "instructor"] },
     { id: "reports", label: "Damage Reports", icon: <AlertTriangle size={20} />, roles: ["admin", "instructor"] },
+    { id: "categories", label: "Categories", icon: <Layers size={20} />, roles: ["admin"] },
     { id: "users", label: "User Management", icon: <Users size={20} />, roles: ["admin"] },
     { id: "logs", label: "Activity Logs", icon: <History size={20} />, roles: ["admin"] },
   ];
@@ -124,12 +126,12 @@ const Sidebar = ({
       className={`h-screen bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col shrink-0 transition-all duration-500 ease-out z-20 shadow-xl
         ${isExpanded ? "w-72" : "w-20"}`}
     >
-      {/* Logo Area - Bigger with Rotating Animation */}
+      {/* Logo Area */}
       <div className={`py-8 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 transition-all duration-500 ease-out ${
         isExpanded ? "px-6" : "px-4 justify-center"
       }`}>
         <div className="flex items-center gap-4">
-          {/* Rotating Logo Image - Bigger */}
+          {/* Rotating Logo */}
           <div className={`rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg overflow-hidden transition-all duration-500 ease-out ${
             isExpanded ? "w-20 h-20" : "w-14 h-14"
           }`}>
@@ -149,7 +151,7 @@ const Sidebar = ({
             />
           </div>
           
-          {/* Branding Name - Bigger Text */}
+          {/* Branding Name */}
           <div
             className={`overflow-hidden transition-all duration-500 ease-out ${
               isExpanded ? "opacity-100 translate-x-0 max-w-[200px] delay-100" : "opacity-0 -translate-x-10 max-w-0 pointer-events-none"
@@ -159,7 +161,7 @@ const Sidebar = ({
               CLAMS
             </p>
             <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider whitespace-nowrap mt-1">
-              Laps
+              CCS LAB AST MNG SYS
             </p>
           </div>
         </div>
@@ -189,7 +191,7 @@ const Sidebar = ({
       <div className={`border-t border-slate-200 dark:border-slate-800 py-6 transition-all duration-500 ease-out ${
         isExpanded ? "px-4" : "px-2"
       }`}>
-        {/* User Info - Only visible when expanded */}
+        {/* User Info */}
         <div
           className={`mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 transition-all duration-500 ease-out ${
             isExpanded ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden p-0 mb-0"
@@ -210,7 +212,7 @@ const Sidebar = ({
           </div>
         </div>
         
-        {/* Logout Button - Emphasized on Hover */}
+        {/* Logout Button */}
         <button
           onClick={onLogout}
           className={`w-full flex items-center gap-3 rounded-xl transition-all duration-300 ease-out group ${
@@ -239,12 +241,8 @@ const Sidebar = ({
       {/* Animation Styles */}
       <style>{`
         @keyframes logo-spin {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         
         .animate-logo-spin {

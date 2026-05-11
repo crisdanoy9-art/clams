@@ -11,7 +11,7 @@ const SALT_ROUNDS = 10;
 // ============================================================
 export const Register = async (req, res) => {
   try {
-    // Support both body formats: direct or wrapped in 'data'
+    // Support both body formats
     let bodyData = req.body;
     if (req.body.data) {
       bodyData = req.body.data;
@@ -21,10 +21,9 @@ export const Register = async (req, res) => {
 
     console.log("\n========== REGISTER ATTEMPT ==========");
     console.log("Username:", username);
-    console.log("ID Number:", id_number);
-    console.log("Role provided:", role);
+    console.log("Password provided:", password ? "Yes" : "No");
 
-    // Validation - Check required fields
+    // Validation
     if (!username || !password) {
       return res.status(400).json({ 
         success: false,
@@ -40,9 +39,11 @@ export const Register = async (req, res) => {
     }
 
     // Check if username already exists
-    const existingUser = await findUserByUsername(username);
-    if (existingUser) {
-      console.log("Username already exists:", username);
+    const existingUser = await pool.query(
+      "SELECT * FROM clams.users WHERE username = $1",
+      [username]
+    );
+    if (existingUser.rows.length > 0) {
       return res.status(409).json({ 
         success: false,
         error: "Username already exists" 
@@ -55,21 +56,19 @@ export const Register = async (req, res) => {
       [id_number]
     );
     if (existingIdNumber.rows.length > 0) {
-      console.log("ID Number already exists:", id_number);
       return res.status(409).json({ 
         success: false,
         error: "ID Number already exists" 
       });
     }
 
-    // Check if email already exists (if provided)
+    // Check if email already exists
     if (email) {
       const existingEmail = await pool.query(
         "SELECT * FROM clams.users WHERE email = $1",
         [email]
       );
       if (existingEmail.rows.length > 0) {
-        console.log("Email already exists:", email);
         return res.status(409).json({ 
           success: false,
           error: "Email already exists" 
@@ -77,62 +76,43 @@ export const Register = async (req, res) => {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+    // Hash the password - THIS IS KEY
+    const hashedPassword = await bcrypt.hash(password, 10);
     console.log("Password hashed successfully");
 
-    // Determine role - if not provided, default to 'instructor'
-    // If provided, ensure it's either 'admin' or 'instructor'
+    // Determine role (make sure it's lowercase for database)
     let userRole = 'instructor';
-    if (role === 'admin') {
+    if (role && role.toLowerCase() === 'admin') {
       userRole = 'admin';
-    } else if (role === 'instructor') {
+    } else if (role && role.toLowerCase() === 'instructor') {
       userRole = 'instructor';
-    } else {
-      userRole = 'instructor'; // default
     }
-    
-    console.log("Final role to save:", userRole);
 
-    // Create user data object
-    const userData = {
-      id_number,
-      username,
-      password_hash: hashedPassword,
-      first_name: first_name || null,
-      last_name: last_name || null,
-      email: email || null,
-      role: userRole
-    };
+    // Insert user - NOTE: using password_hash column, NOT password
+    const result = await pool.query(
+      `INSERT INTO clams.users (id_number, username, password_hash, first_name, last_name, email, role, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       RETURNING user_id, username, role, id_number, first_name, last_name, email`,
+      [id_number, username, hashedPassword, first_name || null, last_name || null, email || null, userRole]
+    );
 
-    // Insert user into database
-    const newUser = await createUser(userData);
-    console.log("User created with ID:", newUser.user_id);
-    console.log("User role in database:", newUser.role);
+    const newUser = result.rows[0];
+    console.log("User created successfully:", newUser.user_id);
 
-    // Log the registration activity
+    // Log activity
     await logActivity(newUser.user_id, "REGISTER", "users", newUser.user_id);
 
-    // Return success response (without password)
     return res.status(201).json({
       success: true,
       message: "User registered successfully",
-      user: {
-        user_id: newUser.user_id,
-        id_number: id_number,
-        username: newUser.username,
-        first_name: first_name || null,
-        last_name: last_name || null,
-        email: email || null,
-        role: newUser.role
-      }
+      user: newUser
     });
 
   } catch (error) {
     console.error("Registration error:", error);
     return res.status(500).json({ 
       success: false,
-      error: "Registration failed: " + error.message 
+      error: error.message 
     });
   }
 };
