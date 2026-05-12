@@ -352,27 +352,7 @@ export default function Categories({ userRole, onRefresh }) {
         </div>
       </div>
 
-      {/* Info Box */}
-      <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-5 border border-blue-100 dark:border-blue-800">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-            <Layers size={16} className="text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300">How Categories Are Used</h4>
-            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-              Categories help organize your equipment and peripherals. When adding equipment or peripherals, 
-              you can select from these categories to classify your assets. This makes inventory management 
-              more organized and easier to filter.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">Equipment Page → Select Category</span>
-              <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">Peripherals Page → Select Category</span>
-              <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">Filter inventory by category</span>
-            </div>
-          </div>
-        </div>
-      </div>
+   
 
       {/* Modals */}
       {isAddModalOpen && (
