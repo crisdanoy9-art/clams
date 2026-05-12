@@ -3,17 +3,17 @@
 ================================================================================
 
 ────────────────────────────────────────────────────────────────────────────────
- #1  POST /auth/login
- Description: Authenticate user and return JWT token
-────────────────────────────────────────────────────────────────────────────────
- HEADERS:
-   Content-Type: application/json
+  #1  POST /auth/login
+  Description: Authenticate user and return JWT token
+  ────────────────────────────────────────────────────────────────────────────────
+  HEADERS:
+    Content-Type: application/json
 
- RAW JSON BODY:
- {
-   "username": "admin",
-   "password": "admin123"
- }
+  RAW JSON BODY:
+  {
+    "username": "admin",
+    "password": "admin123"
+  }
 
  RESPONSE:
  {
