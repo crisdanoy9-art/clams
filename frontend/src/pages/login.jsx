@@ -203,24 +203,7 @@ export default function Login({ onLogin, darkMode }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 focus:ring-slate-900 dark:focus:ring-slate-100"
-                  />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Remember me</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium transition"
-                >
-                  Forgot password?
-                </button>
-              </div>
+             
 
               <button
                 type="submit"
@@ -238,35 +221,7 @@ export default function Login({ onLogin, darkMode }) {
               </button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
-              <div className="text-center">
-                <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
-                  Demo Credentials
-                </p>
-                <div className="space-y-1">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      admin
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      admin123
-                    </span>
-                    <span className="ml-2 text-indigo-600 dark:text-indigo-400">(Admin)</span>
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      ins
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                      ins123
-                    </span>
-                    <span className="ml-2 text-blue-600 dark:text-blue-400">(Instructor)</span>
-                  </p>
-                </div>
-              </div>
-            </div>
+            
           </div>
         </div>
       </div>

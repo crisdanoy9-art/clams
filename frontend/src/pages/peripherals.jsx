@@ -15,68 +15,155 @@ const getPeripheralIcon = (categoryName) => {
   return <Keyboard size={15} className="text-slate-500 dark:text-slate-400" />;
 };
 
-// Add Peripheral Modal
+// Add Peripheral Modal - FIXED to stay open
 function AddPeripheralModal({ laboratories, categories, onClose, onSave }) {
-  const [formData, setFormData] = useState({ item_name: "", brand: "", category_id: "", lab_id: "", copies: 1 });
+  const [formData, setFormData] = useState({ 
+    item_name: "", 
+    brand: "", 
+    category_id: "", 
+    lab_id: "", 
+    copies: 1 
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.item_name) { toast.error("Item name is required"); return; }
+    
+    // Validation
+    if (!formData.item_name.trim()) {
+      toast.error("Item name is required");
+      return;
+    }
+    
     const copies = parseInt(formData.copies) || 1;
-    if (copies < 1) { toast.error("At least one copy required"); return; }
+    if (copies < 1) {
+      toast.error("At least one copy required");
+      return;
+    }
+    
     setLoading(true);
     try {
       await axiosInstance.post("/create/peripherals/bulk", {
-        data: { item_name: formData.item_name, brand: formData.brand || null, category_id: formData.category_id || null, lab_id: formData.lab_id || null, copies },
+        data: {
+          item_name: formData.item_name,
+          brand: formData.brand || null,
+          category_id: formData.category_id || null,
+          lab_id: formData.lab_id || null,
+          copies: copies,
+        },
       });
       toast.success(`Added ${copies} peripheral(s)`);
-      onSave();
-      onClose();
-    } catch (error) { toast.error(error.response?.data?.error || "Failed to add peripherals"); } finally { setLoading(false); }
+      onSave(); // Refresh the list
+      onClose(); // Close modal only after success
+    } catch (error) {
+      console.error("Error adding peripheral:", error);
+      toast.error(error.response?.data?.error || "Failed to add peripherals");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 shadow-xl">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Add Peripherals</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
             <X size={18} className="text-slate-400 dark:text-slate-500" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Item Name *</label>
-            <input type="text" value={formData.item_name} onChange={(e) => setFormData({ ...formData, item_name: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white" required />
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Item Name *
+            </label>
+            <input
+              type="text"
+              value={formData.item_name}
+              onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+              placeholder="e.g., Logitech Mouse, Dell Keyboard"
+              autoFocus
+            />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Brand</label>
-            <input type="text" value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg" />
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Brand
+            </label>
+            <input
+              type="text"
+              value={formData.brand}
+              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+              placeholder="e.g., Logitech, Dell, HP"
+            />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Category</label>
-            <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Category
+            </label>
+            <select
+              value={formData.category_id}
+              onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+            >
               <option value="">Select Category</option>
-              {categories.map((cat) => (<option key={cat.category_id} value={cat.category_id}>{cat.category_name}</option>))}
+              {categories.map((cat) => (
+                <option key={cat.category_id} value={cat.category_id}>{cat.category_name}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Laboratory (Stock)</label>
-            <select value={formData.lab_id} onChange={(e) => setFormData({ ...formData, lab_id: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Laboratory (Stock Location)
+            </label>
+            <select
+              value={formData.lab_id}
+              onChange={(e) => setFormData({ ...formData, lab_id: e.target.value })}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+            >
               <option value="">Select Laboratory</option>
-              {laboratories.map((lab) => (<option key={lab.lab_id} value={lab.lab_id}>{lab.lab_name}</option>))}
+              {laboratories.map((lab) => (
+                <option key={lab.lab_id} value={lab.lab_id}>{lab.lab_name}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Number of copies</label>
-            <input type="number" min="1" value={formData.copies} onChange={(e) => setFormData({ ...formData, copies: e.target.value })} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg" />
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+              Number of Copies
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={formData.copies}
+              onChange={(e) => setFormData({ ...formData, copies: e.target.value })}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+            />
+            <p className="text-xs text-slate-400 mt-1">How many units to add to inventory</p>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
-            <button type="submit" disabled={loading} className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 dark:bg-slate-700 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-2">
-              {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={16} />}
-              Add
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 dark:bg-slate-700 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-2"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              Add {formData.copies > 1 ? `${formData.copies} Peripherals` : "Peripheral"}
             </button>
           </div>
         </form>
@@ -88,7 +175,7 @@ function AddPeripheralModal({ laboratories, categories, onClose, onSave }) {
 // View Details Modal
 function ViewPeripheralModal({ peripheral, onClose }) {
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm ">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 shadow-xl">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Peripheral Details</h2>
@@ -104,7 +191,10 @@ function ViewPeripheralModal({ peripheral, onClose }) {
             <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Working</label><p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{peripheral.working_count}</p></div>
             <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Damaged</label><p className="text-lg font-bold text-red-600 dark:text-red-400">{peripheral.damaged_count}</p></div>
           </div>
-          <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Location</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{peripheral.lab_name || "Lab Stock"}</p></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Total</label><p className="text-lg font-bold text-slate-900 dark:text-white">{peripheral.total_count}</p></div>
+            <div><label className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase">Location</label><p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{peripheral.lab_name || "Lab Stock"}</p></div>
+          </div>
         </div>
       </div>
     </div>
@@ -115,8 +205,9 @@ function ViewPeripheralModal({ peripheral, onClose }) {
 function DeleteConfirmModal({ peripheral, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
   const maxQuantity = peripheral.total_count || 1;
+  
   return (
-    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm ">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 shadow-xl">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Delete Peripherals</h2>
@@ -125,7 +216,14 @@ function DeleteConfirmModal({ peripheral, onClose, onConfirm }) {
           <p>Delete <span className="font-semibold text-slate-900 dark:text-white">{peripheral?.item_name}</span> ({peripheral?.brand})</p>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Number of units to delete</label>
-            <input type="number" min="1" max={maxQuantity} value={quantity} onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(1, parseInt(e.target.value) || 1)))} className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white" />
+            <input
+              type="number"
+              min="1"
+              max={maxQuantity}
+              value={quantity}
+              onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(1, parseInt(e.target.value) || 1)))}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white"
+            />
             <p className="text-xs text-slate-400 mt-1">Available: {maxQuantity} unit(s)</p>
           </div>
           <p className="text-xs text-red-500">This action cannot be undone.</p>
@@ -154,7 +252,9 @@ export default function Peripherals({ userRole, onRefresh }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -164,29 +264,49 @@ export default function Peripherals({ userRole, onRefresh }) {
         axiosInstance.get("/laboratories"),
         axiosInstance.get("/categories"),
       ]);
-      const data = peripheralsRes.data.map((p) => ({ ...p, working_count: Number(p.working_count), damaged_count: Number(p.damaged_count), total_count: Number(p.total_count) }));
+      const data = peripheralsRes.data.map((p) => ({ 
+        ...p, 
+        working_count: Number(p.working_count), 
+        damaged_count: Number(p.damaged_count), 
+        total_count: Number(p.total_count) 
+      }));
       setPeripherals(data);
       setLaboratories(labsRes.data || []);
       setCategories(categoriesRes.data || []);
       triggerRefresh();
       onRefresh();
-    } catch (error) { toast.error("Failed to load data"); } finally { setLoading(false); }
+    } catch (error) { 
+      console.error("Error fetching data:", error);
+      toast.error("Failed to load data"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const handleDelete = async (quantity) => {
     if (deleteItem) {
       try {
-        await axiosInstance.post("/peripherals/delete-type", { data: { item_name: deleteItem.item_name, brand: deleteItem.brand, quantity } });
+        await axiosInstance.post("/peripherals/delete-type", { 
+          data: { 
+            item_name: deleteItem.item_name, 
+            brand: deleteItem.brand, 
+            quantity 
+          } 
+        });
         toast.success(`Deleted ${quantity} unit(s)`);
         fetchData();
         setIsDeleteModalOpen(false);
         setDeleteItem(null);
-      } catch (error) { toast.error("Failed to delete"); }
+      } catch (error) { 
+        console.error("Delete error:", error);
+        toast.error("Failed to delete"); 
+      }
     }
   };
 
   const filtered = peripherals.filter((item) => {
-    const matchSearch = item.item_name?.toLowerCase().includes(search.toLowerCase()) || item.brand?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = item.item_name?.toLowerCase().includes(search.toLowerCase()) || 
+                        item.brand?.toLowerCase().includes(search.toLowerCase());
     let matchStatus = true;
     if (filterStatus === "working") matchStatus = item.working_count > 0;
     else if (filterStatus === "damaged") matchStatus = item.damaged_count > 0;
@@ -219,18 +339,35 @@ export default function Peripherals({ userRole, onRefresh }) {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <input type="text" placeholder="Search peripherals..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white w-56 transition" />
+            <input 
+              type="text" 
+              placeholder="Search peripherals..." 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              className="pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-100 dark:text-white w-56 transition" 
+            />
           </div>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer dark:text-white transition">
+          <select 
+            value={filterStatus} 
+            onChange={(e) => setFilterStatus(e.target.value)} 
+            className="px-3 py-2.5 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer dark:text-white transition"
+          >
             <option value="all">All Status</option>
             <option value="working">Has Working Units</option>
             <option value="damaged">Has Damaged Units</option>
           </select>
-          <button onClick={fetchData} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition transform hover:scale-105" title="Refresh">
+          <button 
+            onClick={fetchData} 
+            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition transform hover:scale-105" 
+            title="Refresh"
+          >
             <RefreshCw size={18} className="text-slate-500 dark:text-slate-400" />
           </button>
           {userRole === "admin" && (
-            <button onClick={() => setIsFormOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition transform hover:scale-105">
+            <button 
+              onClick={() => setIsFormOpen(true)} 
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 dark:bg-slate-700 text-white text-sm font-medium rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition transform hover:scale-105"
+            >
               <Plus size={16} /> Add Peripheral
             </button>
           )}

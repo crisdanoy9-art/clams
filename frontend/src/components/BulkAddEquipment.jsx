@@ -232,10 +232,7 @@ export default function BulkAddEquipment({ laboratories, categories, onClose, on
               </div>
             </div>
 
-            <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">
-              <p className="text-sm text-amber-700 dark:text-amber-400">📊 You are about to create <strong>{rangeData.end_number - rangeData.start_number + 1}</strong> PCs: {rangeData.pc_name_prefix}{rangeData.start_number} to {rangeData.pc_name_prefix}{rangeData.end_number}</p>
-            </div>
-
+           
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
               <button type="button" onClick={onClose} className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
               <button type="submit" disabled={loading} className="px-5 py-2.5 text-sm font-medium text-white bg-slate-900 dark:bg-slate-700 rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition flex items-center gap-2">
